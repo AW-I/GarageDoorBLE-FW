@@ -1,25 +1,18 @@
 #include "a_task_handler.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
-
-static const char* TAG = "Start";
-
-//Private functions
+/* Private functions */
 esp_err_t app_setup(void);
 
-
-//Entry point.
+/* Entry Point */
 void app_main(void)
 {
-    //Setup universal drivers.
     app_setup();
-
-    //Run app tasks.
     vTaskInit();
-    ESP_LOGD(TAG, "Application tasks started.");
     return;
 }
 
+/* Univsersal Drivers */
 esp_err_t app_setup(void) {
     esp_err_t ret;
     // Initialize NVS

@@ -1,6 +1,10 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "a_task_handler.h"
+#include "esp_log.h"
+
+static const char* TAG = "vTaskInit";
+
 
 void vTaskInit(void)
 {
@@ -12,6 +16,5 @@ void vTaskInit(void)
 #if BLE_TASK
 
 #endif
-
-    vTaskDelete(NULL);
+    ESP_LOGI(TAG, "User Applications Started.");
 }
