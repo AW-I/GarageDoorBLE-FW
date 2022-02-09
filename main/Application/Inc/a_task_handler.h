@@ -1,8 +1,5 @@
 /**********  Task Settings  **********/
-#define MAIN_TASK				    1		//Door opener task
-#define BLE_TASK					1		//Bluetooth stack handler.
+#define DOOR_TASK				    1		//Door opener task
+#define WATCHDOG_TASK               0       //Watchdog
 
-/**********  Function Settings  **********/
-#define USE_SECURE                  0
-
-void vTaskInit(void);
+void task_init(void);

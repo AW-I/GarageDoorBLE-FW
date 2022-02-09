@@ -8,11 +8,11 @@ esp_err_t app_setup(void);
 void app_main(void)
 {
     app_setup();
-    vTaskInit();
+    task_init();
     return;
 }
 
-/* Univsersal Drivers */
+/* Base Drivers */
 esp_err_t app_setup(void) {
     esp_err_t ret;
     // Initialize NVS
