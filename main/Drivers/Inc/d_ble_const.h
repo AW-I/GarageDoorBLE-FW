@@ -1,6 +1,9 @@
+#ifndef __D_BLE_CONST_H_
+#define __D_BLE_CONST_h_
+
 #include "esp_gap_ble_api.h"
 
-#define DEVICE_NAME          "J&W_Enterpise"    /
+#define DEVICE_NAME          "J&W_Enterpise"    
 #define SPP_SVC_INST_ID	            0
 
 /// Service UUID
@@ -28,3 +31,4 @@ static esp_ble_adv_params_t spp_adv_params = {
     .channel_map        = ADV_CHNL_ALL,
     .adv_filter_policy  = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
 };
+#endif

@@ -4,30 +4,27 @@
 #include "esp_gatts_api.h"
 #include "esp_bt_defs.h"
 #include "esp_bt_main.h"
-
-#include "d_ble_const.h"
+#include "d_ble_garage_profile.h"
 
 #define ESP_BLE_APP_ID  0x69
-
 
 static const char* TAG = "BLE Driver";
 
 static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
     esp_err_t err;
-    ESP_LOGE(TAG, "GAP_EVT, event %d\n", event);
 
     switch (event) {
-    case ESP_GAP_BLE_ADV_DATA_RAW_SET_COMPLETE_EVT:
-        esp_ble_gap_start_advertising(&spp_adv_params);
-        break;
-    case ESP_GAP_BLE_ADV_START_COMPLETE_EVT:
-        if((err = param->adv_start_cmpl.status) != ESP_BT_STATUS_SUCCESS) {
-            ESP_LOGE(TAG, "Advertising start failed: %s\n", esp_err_to_name(err));
-        }
-        break;
-    default:
-        break;
+        case ESP_GAP_BLE_ADV_DATA_RAW_SET_COMPLETE_EVT:
+            esp_ble_gap_start_advertising(&spp_adv_params);
+            break;
+        case ESP_GAP_BLE_ADV_START_COMPLETE_EVT:
+            if((err = param->adv_start_cmpl.status) != ESP_BT_STATUS_SUCCESS) {
+                ESP_LOGE(TAG, "Advertising start failed: %s\n", esp_err_to_name(err));
+            }
+            break;
+        default:
+            break;
     }
 }
 
@@ -60,7 +57,7 @@ esp_err_t ble_drv_init(void) {
         ESP_LOGE(TAG, "%s enable bluetooth failed: %s\n", __func__, esp_err_to_name(ret));
         return ret;
     }
-    //esp_ble_gatts_register_callback(gatts_event_handler);
+    esp_ble_gatts_register_callback(gatts_event_handler);
     esp_ble_gap_register_callback(gap_event_handler);
     esp_ble_gatts_app_register(ESP_BLE_APP_ID);
     return ret;
