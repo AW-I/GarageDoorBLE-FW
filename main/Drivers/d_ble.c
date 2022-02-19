@@ -1,32 +1,11 @@
 #include "esp_log.h"
 #include "esp_bt.h"
-#include "esp_gap_ble_api.h"
-#include "esp_gatts_api.h"
-#include "esp_bt_defs.h"
 #include "esp_bt_main.h"
-#include "d_ble_garage_profile.h"
 
-#define ESP_BLE_APP_ID  0x69
+#include "d_ble_gap.h"
+#include "d_ble_gatt.h"
 
-static const char* TAG = "BLE Driver";
-
-static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
-{
-    esp_err_t err;
-
-    switch (event) {
-        case ESP_GAP_BLE_ADV_DATA_RAW_SET_COMPLETE_EVT:
-            esp_ble_gap_start_advertising(&spp_adv_params);
-            break;
-        case ESP_GAP_BLE_ADV_START_COMPLETE_EVT:
-            if((err = param->adv_start_cmpl.status) != ESP_BT_STATUS_SUCCESS) {
-                ESP_LOGE(TAG, "Advertising start failed: %s\n", esp_err_to_name(err));
-            }
-            break;
-        default:
-            break;
-    }
-}
+static const char* TAG = "BLE_Main";
 
 esp_err_t ble_drv_init(void) {
     esp_err_t ret;

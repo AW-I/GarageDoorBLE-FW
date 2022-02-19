@@ -4,7 +4,6 @@
 
 #include "m_door_api.h"
 
-
 static const char* TAG = "Door Api";
 static const uint8_t DEF_PASS[] = {'B','i','g','c','h','0','n','k'};
 

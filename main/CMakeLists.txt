@@ -4,7 +4,8 @@ set(srcs    "Core/main.c"
             "Middlewares/m_ble_api.c"
             "Middlewares/m_door_api.c"
             "Drivers/d_ble.c"
-            "Drivers/d_ble_garage_profile.c")
+            "Drivers/d_ble_gatt.c"
+            "Drivers/d_ble_gap.c")
 
 set(incs    "Core/Inc"
             "Application/Inc"
