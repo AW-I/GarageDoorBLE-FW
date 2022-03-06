@@ -1,3 +1,6 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#ifndef __MAIN_H_
+#define __MAIN_H_
+
+void app_main(void);
+
+#endif

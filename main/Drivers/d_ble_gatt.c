@@ -9,6 +9,7 @@
 
 #include "d_ble_gap.h"
 #include "d_ble_gatt.h"
+#include "d_ble_queue.h"
 
 static const char* TAG = "BLE_GATT";
 
@@ -40,7 +41,7 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
     	case ESP_GATTS_REG_EVT:
     	    ESP_LOGI(TAG, "ESP_GATTS_REG_EVT\n");
         	esp_ble_gap_set_device_name(DEVICE_NAME);
-        	esp_ble_gap_config_adv_data_raw((uint8_t *)ble_adv_data, sizeof(ble_adv_data));
+			esp_ble_gap_config_adv_data((esp_ble_adv_data_t *)&ble_adv_data);
         	esp_ble_gatts_create_attr_tab(gdp_gatt_db, gatts_if, GDP_IDX_NB, BLE_SVC_INST_ID);
        	break;
     	case ESP_GATTS_READ_EVT:
@@ -58,19 +59,20 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
                     }
                 }
                 else if(res == GDP_IDX_DATA_RECV_VAL){
-                    //Write to uart.
-					ESP_LOGI(TAG, "ESP_GATTS_PREP_WRITE_EVT : RX Len = %d\n", p_data->write.len);
+					ESP_LOGI(TAG, "ESP_GATTS_WRITE_EVT : RX Len = %d\n", p_data->write.len);
+					esp_err_t err = ble_queue_rcv_push(p_data->write.value + 1,p_data->write.len);
+					if(err) {
+						ESP_LOGI(TAG, "ESP_GATTS_WRITE_EVT : Failed to write to queue!");
+					}
                 }
             }else if((p_data->write.is_prep == true)&&(res == GDP_IDX_DATA_RECV_VAL)){
                 ESP_LOGI(TAG, "ESP_GATTS_PREP_WRITE_EVT : handle = %d\n", res);
-                //Store buffer
             }
       	 	break;
     	}
     	case ESP_GATTS_EXEC_WRITE_EVT:{
     	    ESP_LOGI(TAG, "ESP_GATTS_EXEC_WRITE_EVT\n");
     	    if(p_data->exec_write.exec_write_flag){
-                //Print Write buffer.
     	    }
     	    break;
     	}

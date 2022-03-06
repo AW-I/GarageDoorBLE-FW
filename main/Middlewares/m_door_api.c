@@ -18,7 +18,6 @@ esp_err_t door_deinit(void){
 }
 
 esp_err_t door_toggle_open(uint8_t * pass, uint32_t passLen){
-    if(passLen == sizeof(DEF_PASS)) return ESP_FAIL;
     if(memcmp(DEF_PASS,pass,sizeof(DEF_PASS))) return ESP_FAIL;
     //Open door here.
     ESP_LOGI(TAG, "Opening door.");

@@ -1,6 +1,7 @@
 #include "a_task_handler.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
+
 /* Private functions */
 esp_err_t app_setup(void);
 
