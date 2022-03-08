@@ -16,9 +16,6 @@ typedef enum{
     GDP_IDX_DATA_RECV_CHAR,
     GDP_IDX_DATA_RECV_VAL,
 
-    GDP_IDX_DATA_NOTIFY_CHAR,
-    GDP_IDX_DATA_NTY_VAL,
-    GDP_IDX_DATA_NTF_CFG,
     GDP_IDX_NB,
 } ble_db_enum;
 
@@ -27,7 +24,6 @@ typedef enum{
 /// Service UUID 
 static const uint16_t primary_service_uuid = ESP_GATT_UUID_PRI_SERVICE;
 static const uint16_t character_declaration_uuid = ESP_GATT_UUID_CHAR_DECLARE;
-static const uint16_t character_client_config_uuid = ESP_GATT_UUID_CHAR_CLIENT_CONFIG;
 
 //Custom Service (GDP)
 static const uint8_t gdp_service_uuid[ESP_UUID_LEN_128] = ESP_GATT_UUID_GDP_SERVICE;
@@ -36,13 +32,7 @@ static const uint8_t gdp_service_uuid[ESP_UUID_LEN_128] = ESP_GATT_UUID_GDP_SERV
 static const uint8_t  gdp_data_receive_uuid[ESP_UUID_LEN_128]  = ESP_GATT_UUID_GDP_DATA_RECEIVE;
 static const uint8_t  gdp_data_receive_val[20] = {0x00};
 
-///GDP Service - data notify characteristic, notify&read
-static const uint8_t  gdp_data_notify_uuid[ESP_UUID_LEN_128]  = ESP_GATT_UUID_GDP_DATA_NOTIFY;
-static const uint8_t  gdp_data_notify_val[20] = {0x00};
-static const uint8_t  gdp_data_notify_ccc[2] = {0x00, 0x00};
-
 //Properties
-static const uint8_t char_prop_read_notify = ESP_GATT_CHAR_PROP_BIT_READ|ESP_GATT_CHAR_PROP_BIT_NOTIFY;
 static const uint8_t char_prop_write = ESP_GATT_CHAR_PROP_BIT_WRITE_NR;
 
 ///Full HRS Database Description - Used to add attributes into the database
@@ -59,24 +49,9 @@ static const esp_gatts_attr_db_t gdp_gatt_db[GDP_IDX_NB] =
     CHAR_DECLARATION_SIZE,CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_write}},
 
     //GDP -  data receive characteristic Value
-    [GDP_IDX_DATA_RECV_VAL]             	=
+    [GDP_IDX_DATA_RECV_VAL]                 =
     {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_128, (uint8_t *)&gdp_data_receive_uuid, ESP_GATT_PERM_WRITE,
-    GDP_DATA_MAX_LEN,sizeof(gdp_data_notify_val), (uint8_t *)gdp_data_notify_val}},
-
-    //GDP -  data notify characteristic Declaration
-    [GDP_IDX_DATA_NOTIFY_CHAR]  =
-    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ,
-    CHAR_DECLARATION_SIZE,CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_notify}},
-
-    //GDP -  data notify characteristic Value
-    [GDP_IDX_DATA_NTY_VAL]   =
-    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_128, (uint8_t *)&gdp_data_notify_uuid, ESP_GATT_PERM_READ,
-    GDP_DATA_MAX_LEN, sizeof(gdp_data_notify_val), (uint8_t *)gdp_data_notify_val}},
-
-    //GDP -  data notify characteristic - Client Characteristic Configuration Descriptor
-    [GDP_IDX_DATA_NTF_CFG]         =
-    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ|ESP_GATT_PERM_WRITE,
-    sizeof(uint16_t),sizeof(gdp_data_notify_ccc), (uint8_t *)gdp_data_notify_ccc}},
+    GDP_DATA_MAX_LEN,sizeof(gdp_data_receive_val), (uint8_t *)gdp_data_receive_val}},
 };
 
 /** Functions **/
