@@ -38,7 +38,7 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
     	case ESP_GATTS_REG_EVT:
     	    ESP_LOGI(TAG, "ESP_GATTS_REG_EVT\n");
         	esp_ble_gap_set_device_name(DEVICE_NAME);
-			esp_ble_gap_config_adv_data((esp_ble_adv_data_t *)&ble_adv_data);
+			esp_ble_gap_config_local_privacy(true);
         	esp_ble_gatts_create_attr_tab(gdp_gatt_db, gatts_if, GDP_IDX_NB, BLE_SVC_INST_ID);
        	break;
     	case ESP_GATTS_READ_EVT:
@@ -78,11 +78,20 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
 			ESP_LOGI(TAG, "ESP_GATTS_STOP_EVT");
         	break;
     	case ESP_GATTS_CONNECT_EVT:
-			ESP_LOGI(TAG, "ESP_GATTS_CONNECT_EVT");
+			ESP_LOGI(TAG, "ESP_GATTS_CONNECT_EVT:");
     	    conn_id = p_data->connect.conn_id;
     	    gdp_gatts_if = gatts_if;
     	    is_connected = true;
     	    memcpy(&remote_bda,&p_data->connect.remote_bda,sizeof(esp_bd_addr_t));
+			ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x",
+			p_data->connect.remote_bda[0],
+			p_data->connect.remote_bda[1],
+			p_data->connect.remote_bda[2],
+			p_data->connect.remote_bda[3],
+			p_data->connect.remote_bda[4],
+			p_data->connect.remote_bda[5]);
+			esp_ble_set_encryption(param->connect.remote_bda, ESP_BLE_SEC_ENCRYPT_MITM);
+
         	break;
     	case ESP_GATTS_DISCONNECT_EVT:
     	    is_connected = false;

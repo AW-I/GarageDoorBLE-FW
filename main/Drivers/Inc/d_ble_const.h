@@ -2,7 +2,7 @@
 #define __D_BLE_CONST_H_
 
 #define ESP_BLE_APP_ID  0x69
-#define DEVICE_NAME          "J&W_Enterpise"    
+#define DEVICE_NAME          "J&W Enterprise"    
 #define BLE_SVC_INST_ID	            0
 
 /// Characteristic UUID
