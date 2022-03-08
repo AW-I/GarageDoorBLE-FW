@@ -36,7 +36,7 @@ static uint8_t find_char_and_desr_index(uint16_t handle)
 void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
     esp_ble_gatts_cb_param_t *p_data = (esp_ble_gatts_cb_param_t *) param;
     uint8_t res = 0xff;
-    ESP_LOGI(TAG, "event = %x\n",event);
+	ESP_LOGI(TAG, "GATT Event = %x\n",event);
     switch (event) {
     	case ESP_GATTS_REG_EVT:
     	    ESP_LOGI(TAG, "ESP_GATTS_REG_EVT\n");
@@ -53,8 +53,10 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
                 ESP_LOGI(TAG, "ESP_GATTS_WRITE_EVT : handle = %d\n", res);
                 if(res == GDP_IDX_DATA_NTF_CFG){
                     if((p_data->write.len == 2)&&(p_data->write.value[0] == 0x01)&&(p_data->write.value[1] == 0x00)){
+						ESP_LOGI(TAG, "ESP_GATTS_WRITE_EVT : Notify enabled\n");
                         enable_data_ntf = true;
                     }else if((p_data->write.len == 2)&&(p_data->write.value[0] == 0x00)&&(p_data->write.value[1] == 0x00)){
+						ESP_LOGI(TAG, "ESP_GATTS_WRITE_EVT : Notify disabled\n");
                         enable_data_ntf = false;
                     }
                 }
@@ -77,6 +79,7 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
     	    break;
     	}
     	case ESP_GATTS_MTU_EVT:
+		    ESP_LOGI(TAG, "ESP_GATTS_MTU_EVT: MTU %d\n",spp_mtu_size);
     	    spp_mtu_size = p_data->mtu.mtu;
     	    break;
     	case ESP_GATTS_CONF_EVT:

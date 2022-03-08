@@ -12,8 +12,8 @@ static const esp_ble_adv_data_t ble_adv_data = {
     .set_scan_rsp = false,
     .include_name = false,
     .include_txpower = false,
-    .min_interval = 0x0028, //slave connection min interval, Time = min_interval * 1.25 msec
-    .max_interval = 0x0190, //slave connection max interval, Time = max_interval * 1.25 msec
+    .min_interval = 0x0100, //slave connection min interval, Time = min_interval * 1.25 msec
+    .max_interval = 0x07D0, //slave connection max interval, Time = max_interval * 1.25 msec
     .appearance = 0x00,
     .manufacturer_len = 0,
     .p_manufacturer_data =  NULL,
@@ -25,8 +25,8 @@ static const esp_ble_adv_data_t ble_adv_data = {
 };
 //Param
  static const esp_ble_adv_params_t ble_adv_params = {
-    .adv_int_min        = 0x120,
-    .adv_int_max        = 0x160,
+    .adv_int_min        = 0x040,
+    .adv_int_max        = 0x120,
     .adv_type           = ADV_TYPE_IND,
     .own_addr_type      = BLE_ADDR_TYPE_PUBLIC,
     .channel_map        = ADV_CHNL_ALL,
