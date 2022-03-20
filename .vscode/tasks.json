@@ -300,7 +300,7 @@
             "type": "shell",
             "command": "${config:idf.pythonBinPath} ${config:idf.espIdfPath}/tools/idf.py",
             "windows": {
-                "command" : "clear & start openocd -c \"set ESP_RTOS none\" -f board/esp32-wrover-kit-3.3v.cfg & exit",
+                "command" : "start openocd -c \"set ESP_RTOS none\" -f board/esp32-wrover-kit-3.3v.cfg & exit",
                 //"command": "start notepad",
                 "options": {
                     "env": {
