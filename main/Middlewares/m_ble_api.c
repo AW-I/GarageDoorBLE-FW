@@ -29,7 +29,6 @@ uint32_t ble_receive(uint8_t * rxBuffer, uint32_t maxDataSize, uint32_t timeout)
     return ble_queue_rcv(rxBuffer,maxDataSize,timeout);
 }
 
-esp_err_t ble_send(uint8_t * txBuffer, uint32_t txDataSize, uint32_t timeout) {
-    ESP_LOGI(TAG, "BLE tx size: %d ", txDataSize);
-    return ESP_OK;
+esp_err_t ble_send(uint8_t * txBuffer, uint32_t txDataSize) {
+    return ble_queue_send_push(txBuffer,txDataSize);
 }

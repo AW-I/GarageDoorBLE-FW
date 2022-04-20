@@ -48,11 +48,11 @@
     "*.tcc": "c",
     "numeric": "c",
     "fstream": "c",
-    "iostream": "c"
+    "iostream": "c",
+    "d_config.h": "c"
   },
   "idf.adapterTargetName": "esp32",
-  "idf.flashType": "UART",
-  "idf.portWin": "COM11",
+  "idf.portWin": "COM21",
   "idf.openOcdConfigs": [
     "interface/ftdi/esp32_devkitj_v1.cfg",
     "target/esp32.cfg"

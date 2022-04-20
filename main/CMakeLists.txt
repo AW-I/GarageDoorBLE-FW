@@ -6,7 +6,8 @@ set(srcs    "Core/main.c"
             "Drivers/d_ble_queue.c"
             "Drivers/d_ble.c"
             "Drivers/d_ble_gatt.c"
-            "Drivers/d_ble_gap.c")
+            "Drivers/d_ble_gap.c"
+            "Drivers/d_config.c")
 
 set(incs    "Core/Inc"
             "Application/Inc"

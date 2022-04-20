@@ -7,9 +7,12 @@
 #include "esp_system.h"
 #include "esp_log.h"
 
+#include "d_config.h"
 #include "d_ble_gap.h"
 #include "d_ble_gatt.h"
 #include "d_ble_queue.h"
+
+#define BLE_TIMEOUT 10
 
 static const char* TAG = "BLE_GATT";
 
@@ -19,9 +22,9 @@ static esp_gatt_if_t gdp_gatts_if = 0xff;
 static bool is_connected = false;
 static esp_bd_addr_t remote_bda = {0x0,};
 static uint16_t ble_handle_table[GDP_IDX_NB];
+static uint8_t txBuffer[QUEUE_BUFF_SIZE] = {0};
 
-static uint8_t find_char_and_desr_index(uint16_t handle)
-{
+static uint8_t find_char_and_desr_index(uint16_t handle){
     uint8_t error = 0xff;
     for(int i = 0; i < GDP_IDX_NB ; i++){
         if(handle == ble_handle_table[i]){
@@ -34,16 +37,40 @@ static uint8_t find_char_and_desr_index(uint16_t handle)
 void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
     esp_ble_gatts_cb_param_t *p_data = (esp_ble_gatts_cb_param_t *) param;
     uint8_t res = 0xff;
+	uint8_t * nameBuff = NULL;
+	uint8_t nameBuffLen = 0; 
     switch (event) {
     	case ESP_GATTS_REG_EVT:
-    	    ESP_LOGI(TAG, "ESP_GATTS_REG_EVT\n");
-        	esp_ble_gap_set_device_name(DEVICE_NAME);
+		    ESP_LOGI(TAG, "ESP_GATTS_REG_EVT\n");
+			//Get the name from config. 
+			nameBuffLen = config_get_name(&nameBuff);
+			if(nameBuffLen > 0 && nameBuff != NULL) {
+				esp_ble_gap_set_device_name((char *)nameBuff);
+    		} 
 			esp_ble_gap_config_local_privacy(true);
         	esp_ble_gatts_create_attr_tab(gdp_gatt_db, gatts_if, GDP_IDX_NB, BLE_SVC_INST_ID);
        	break;
     	case ESP_GATTS_READ_EVT:
 		    ESP_LOGI(TAG, "ESP_GATTS_READ_EVT\n");
             res = find_char_and_desr_index(p_data->read.handle);
+			if(res == GDP_IDX_DATA_SEND_VAL) {
+				static esp_gatt_rsp_t rsp;
+				//Receive tx command
+				uint32_t recSize = ble_queue_send(txBuffer,sizeof(txBuffer),BLE_TIMEOUT);
+				memset(&rsp,0,sizeof(rsp));
+				//If theres not a current message try to use existing.
+				if(!recSize){
+					recSize = strlen((char *)txBuffer);
+					if(!recSize || recSize > sizeof(txBuffer)) {
+						recSize = 0;
+					}
+				}
+				//Set response and send
+				rsp.attr_value.handle = param->read.handle;
+				rsp.attr_value.len = recSize;
+				memcpy(rsp.attr_value.value, txBuffer,recSize);
+				esp_ble_gatts_send_response(gatts_if,p_data->read.conn_id,p_data->read.trans_id, ESP_GATT_OK, &rsp);
+			}
        	 break;
     	case ESP_GATTS_WRITE_EVT: {
 			ESP_LOGI(TAG, "ESP_GATTS_WRITE_EVT\n");
@@ -51,7 +78,7 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
             if(p_data->write.is_prep == false){
 				if(res == GDP_IDX_DATA_RECV_VAL){
 					ESP_LOGI(TAG, "ESP_GATTS_WRITE_EVT : RX Len = %d\n", p_data->write.len);
-					esp_err_t err = ble_queue_rcv_push(p_data->write.value + 1,p_data->write.len);
+					esp_err_t err = ble_queue_rcv_push(p_data->write.value,p_data->write.len);
 					if(err) {
 						ESP_LOGI(TAG, "ESP_GATTS_WRITE_EVT : Failed to write to queue!");
 					}
@@ -91,7 +118,6 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
 			p_data->connect.remote_bda[4],
 			p_data->connect.remote_bda[5]);
 			esp_ble_set_encryption(param->connect.remote_bda, ESP_BLE_SEC_ENCRYPT_MITM);
-
         	break;
     	case ESP_GATTS_DISCONNECT_EVT:
     	    is_connected = false;

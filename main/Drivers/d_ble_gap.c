@@ -13,7 +13,6 @@ static char *esp_key_type_to_str(esp_ble_key_type_t key_type);
 static char *esp_auth_req_to_str(esp_ble_auth_req_t auth_req);
 static void show_bonded_devices(void);
 
-
 void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
     switch (event) {
@@ -196,7 +195,6 @@ static char *esp_auth_req_to_str(esp_ble_auth_req_t auth_req)
         auth_str = "INVALID BLE AUTH REQ";
         break;
    }
-
    return auth_str;
 }
 

@@ -16,7 +16,10 @@ typedef enum{
     GDP_IDX_DATA_RECV_CHAR,
     GDP_IDX_DATA_RECV_VAL,
 
-    GDP_IDX_NB,
+    GDP_IDX_DATA_SEND_CHAR,
+    GDP_IDX_DATA_SEND_VAL,
+
+    GDP_IDX_NB
 } ble_db_enum;
 
 #define CHAR_DECLARATION_SIZE   (sizeof(uint8_t))
@@ -28,12 +31,15 @@ static const uint16_t character_declaration_uuid = ESP_GATT_UUID_CHAR_DECLARE;
 //Custom Service (GDP)
 static const uint8_t gdp_service_uuid[ESP_UUID_LEN_128] = ESP_GATT_UUID_GDP_SERVICE;
 
-///GDP Service - data receive characteristic, read&write without response
+///GDP Service - data receive characteristic, write without response
 static const uint8_t  gdp_data_receive_uuid[ESP_UUID_LEN_128]  = ESP_GATT_UUID_GDP_DATA_RECEIVE;
-static const uint8_t  gdp_data_receive_val[20] = {0x00};
+
+///GDP Service - data receive characteristic, write without response
+static const uint8_t  gdp_data_send_uuid[ESP_UUID_LEN_128]  = ESP_GATT_UUID_GDP_DATA_SEND;
 
 //Properties
 static const uint8_t char_prop_write = ESP_GATT_CHAR_PROP_BIT_WRITE_NR;
+static const uint8_t char_prop_read = ESP_GATT_CHAR_PROP_BIT_READ;
 
 ///Full HRS Database Description - Used to add attributes into the database
 static const esp_gatts_attr_db_t gdp_gatt_db[GDP_IDX_NB] =
@@ -43,15 +49,25 @@ static const esp_gatts_attr_db_t gdp_gatt_db[GDP_IDX_NB] =
     {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&primary_service_uuid, ESP_GATT_PERM_READ,
     sizeof(gdp_service_uuid), sizeof(gdp_service_uuid), (uint8_t *)&gdp_service_uuid}},
 
-    //GDP -  data receive characteristic Declaration
+    //GDP -  Data receive characteristic Declaration
     [GDP_IDX_DATA_RECV_CHAR]            =
     {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ,
     CHAR_DECLARATION_SIZE,CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_write}},
 
-    //GDP -  data receive characteristic Value
+    //GDP -  Data receive characteristic Value
     [GDP_IDX_DATA_RECV_VAL]                 =
-    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_128, (uint8_t *)&gdp_data_receive_uuid, ESP_GATT_PERM_WRITE,
-    GDP_DATA_MAX_LEN,sizeof(gdp_data_receive_val), (uint8_t *)gdp_data_receive_val}},
+    {{ESP_GATT_RSP_BY_APP}, {ESP_UUID_LEN_128, (uint8_t *)&gdp_data_receive_uuid, ESP_GATT_PERM_WRITE,
+    GDP_DATA_MAX_LEN,0, NULL}},
+
+    //GDP -  Data Send characteristic Declaration
+    [GDP_IDX_DATA_SEND_CHAR]            =
+    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ,
+    CHAR_DECLARATION_SIZE,CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read}},
+
+    //GDP -  Data Send characteristic Value
+    [GDP_IDX_DATA_SEND_VAL]                 =
+    {{ESP_GATT_RSP_BY_APP}, {ESP_UUID_LEN_128, (uint8_t *)&gdp_data_send_uuid, ESP_GATT_PERM_READ,
+    GDP_DATA_MAX_LEN,0, NULL}},
 };
 
 /** Functions **/
