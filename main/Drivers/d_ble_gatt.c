@@ -53,7 +53,7 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
     	case ESP_GATTS_READ_EVT:
 		    ESP_LOGI(TAG, "ESP_GATTS_READ_EVT\n");
             res = find_char_and_desr_index(p_data->read.handle);
-			if(res == GDP_IDX_DATA_SEND_VAL) {
+			if(res == GDP_IDX_DATA_RECV_VAL) {
 				static esp_gatt_rsp_t rsp;
 				//Receive tx command
 				uint32_t recSize = ble_queue_send(txBuffer,sizeof(txBuffer),BLE_TIMEOUT);
@@ -78,6 +78,8 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
             if(p_data->write.is_prep == false){
 				if(res == GDP_IDX_DATA_RECV_VAL){
 					ESP_LOGI(TAG, "ESP_GATTS_WRITE_EVT : RX Len = %d\n", p_data->write.len);
+					//Clear the TX Buffer
+					memset(txBuffer,0,sizeof(txBuffer));
 					esp_err_t err = ble_queue_rcv_push(p_data->write.value,p_data->write.len);
 					if(err) {
 						ESP_LOGI(TAG, "ESP_GATTS_WRITE_EVT : Failed to write to queue!");

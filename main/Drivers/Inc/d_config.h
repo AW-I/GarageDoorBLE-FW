@@ -12,7 +12,7 @@
 
 esp_err_t config_init(void);
 esp_err_t config_set_pass(uint8_t * pass, uint8_t passLen);
-esp_err_t config_set_name(uint8_t * pass, uint8_t passLen);
+esp_err_t config_set_name(uint8_t * name, uint8_t nameLen);
 uint8_t config_get_name(uint8_t ** name);
 uint8_t config_get_pass(uint8_t ** pass);
 

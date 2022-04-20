@@ -14,7 +14,7 @@
 //Variables
 static const char* TAG = "Task Handler";
 static const char RESP_OK[] = "OK\r\n";
-static const char RESP_ERR[] = "ERR\r\n";
+static const char RESP_ERR[] = "ERROR\r\n";
 static uint8_t rxBuffer[64] = {0};
 
 //Function definition.
@@ -62,7 +62,7 @@ void door_task(void * arg)
                 if (NULL == ptr->process_func) continue;
                 if(ptr->cmdID == rxBuffer[0]){
                     handled = pdTRUE;
-                    if(ptr->process_func(rxBuffer,sizeof(rxBuffer)) == ESP_OK){
+                    if(ptr->process_func(rxBuffer + 1 ,rxSize - 1) == ESP_OK){
                         ble_send((uint8_t *)RESP_OK,sizeof(RESP_OK));
                     }
                     ble_send((uint8_t *)RESP_ERR,sizeof(RESP_ERR));
@@ -80,23 +80,47 @@ void door_task(void * arg)
     vTaskDelete(NULL);
 }
 
+
+/* Callback functions */
 esp_err_t handle_open_door(uint8_t * rxBuffer, uint32_t rxSize) {
-    ESP_LOGI(TAG, "Got door open command.");
-    return door_toggle_open(rxBuffer,rxSize);
+    esp_err_t ret = ESP_OK;
+    ret = door_toggle_open(rxBuffer,rxSize);
+    if(ret == ESP_OK) {
+        ESP_LOGI(TAG, "Opening door.");
+    } else {
+        ESP_LOGI(TAG, "Failed to open door.");
+    }
+    return ret;
 }
 
 esp_err_t handle_ap_name(uint8_t * rxBuffer, uint32_t rxSize) {
-    ESP_LOGI(TAG, "Got change ap name command.");
-    return ESP_OK;
+    esp_err_t ret = ESP_OK;
+    ret = ble_set_ap_name(rxBuffer,rxSize);
+    if(ret == ESP_OK) {
+        ESP_LOGI(TAG, "Changed AP name succesfully.");
+    } else {
+        ESP_LOGI(TAG, "Failed to change AP name.");
+    }
+    return ret;
 }
 
 esp_err_t handle_ap_pass(uint8_t * rxBuffer, uint32_t rxSize) {
-    ESP_LOGI(TAG, "Got change ap pass command.");
-    return ESP_OK;
+    esp_err_t ret = ESP_OK;
+    ret = door_change_pass(rxBuffer,rxSize);
+    if(ret == ESP_OK) {
+        ESP_LOGI(TAG, "Changed door password succesfully.");
+    } else if(ret == ESP_ERR_NOT_FINISHED) {
+        ESP_LOGI(TAG, "Door password unlocked.");
+        ret = ESP_OK;
+    } else{
+        ESP_LOGI(TAG, "Failed to change door password.");
+    }
+    return ret;
 }
 
 esp_err_t handle_reboot(uint8_t * rxBuffer, uint32_t rxSize) {
     ESP_LOGI(TAG, "Got reboot command.");
+    door_deinit();
     vTaskDelay(REBOOT_DELAY);
     esp_restart();
     return ESP_OK;

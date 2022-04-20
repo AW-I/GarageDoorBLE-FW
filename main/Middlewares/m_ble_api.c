@@ -1,7 +1,9 @@
+#include <string.h>
 #include "esp_log.h"
 #include "m_ble_api.h"
 #include "d_ble_queue.h"
 #include "d_ble.h"
+#include "d_config.h"
 
 static const char* TAG = "BLE Api";
 
@@ -31,4 +33,18 @@ uint32_t ble_receive(uint8_t * rxBuffer, uint32_t maxDataSize, uint32_t timeout)
 
 esp_err_t ble_send(uint8_t * txBuffer, uint32_t txDataSize) {
     return ble_queue_send_push(txBuffer,txDataSize);
+}
+
+esp_err_t ble_set_ap_name(uint8_t * rxBuffer, uint32_t rxSize) {
+    //Size checks
+    if(!rxSize ) {
+        ESP_LOGE(TAG, "RX buffer was empty");
+        return ESP_ERR_INVALID_ARG;
+    }
+    uint32_t namesize = strlen((char *)rxBuffer);
+    if(!namesize || namesize > MAX_NAME_LEN) {
+        ESP_LOGE(TAG, "Calculated namesize invalid: %d.",rxSize);
+        return ESP_ERR_INVALID_ARG;
+    }
+    return config_set_name(rxBuffer,namesize);
 }

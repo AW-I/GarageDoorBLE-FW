@@ -35,7 +35,7 @@ esp_err_t config_set_pass(uint8_t * pass, uint8_t passLen) {
         ESP_LOGE(TAG, "Failed to open NVS: %d.",err);
         return 0;
     }
-    err = nvs_set_str(handle,NAME_KEY,(char *)pass);
+    err = nvs_set_str(handle,PASS_KEY,(char *)pass);
     return err;
 }
 
