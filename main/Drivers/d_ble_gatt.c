@@ -19,10 +19,12 @@ static const char* TAG = "BLE_GATT";
 static uint16_t conn_id = 0xffff;
 static esp_gatt_if_t gdp_gatts_if = 0xff;
 
-static bool is_connected = false;
+bool is_connected = false;
+uint32_t connection_time = 0;
 static esp_bd_addr_t remote_bda = {0x0,};
 static uint16_t ble_handle_table[GDP_IDX_NB];
 static uint8_t txBuffer[QUEUE_BUFF_SIZE] = {0};
+
 
 static uint8_t find_char_and_desr_index(uint16_t handle){
     uint8_t error = 0xff;
@@ -111,6 +113,7 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
     	    conn_id = p_data->connect.conn_id;
     	    gdp_gatts_if = gatts_if;
     	    is_connected = true;
+			connection_time = xTaskGetTickCount();
     	    memcpy(&remote_bda,&p_data->connect.remote_bda,sizeof(esp_bd_addr_t));
 			ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x",
 			p_data->connect.remote_bda[0],
@@ -123,6 +126,7 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
         	break;
     	case ESP_GATTS_DISCONNECT_EVT:
     	    is_connected = false;
+			connection_time = 0;
     	    esp_ble_gap_start_advertising((esp_ble_adv_params_t *)&ble_adv_params);
     	    break;
     	case ESP_GATTS_OPEN_EVT:

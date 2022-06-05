@@ -1,7 +1,10 @@
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_bt.h"
 #include "esp_bt_main.h"
 
+#include "d_ble.h"
 #include "d_ble_gap.h"
 #include "d_ble_gatt.h"
 
@@ -67,3 +70,12 @@ esp_err_t ble_drv_init(void) {
 
     return ret;
 }
+
+bool ble_drv_is_connected() {
+    return is_connected;
+}
+
+uint32_t ble_drv_get_connection_duration() {
+    return xTaskGetTickCount() - connection_time;
+}
+    

@@ -8,7 +8,7 @@
 
 #define DOOR_GPIO 33
 #define DOOR_DELAY 100
-#define PASS_TIMEOUT 2000
+#define PASS_TIMEOUT 200
 
 static const char* TAG = "Door Api";
 static volatile uint8_t passUnlocked = pdFALSE;

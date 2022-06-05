@@ -4,6 +4,9 @@
 #include "esp_gap_ble_api.h"
 #include "d_ble_const.h"
 
+extern bool is_connected;
+extern uint32_t connection_time;
+
 /* Advertising Data */
 static const uint8_t custom_service[ESP_UUID_LEN_128] = ESP_GATT_UUID_GDP_SERVICE;
 static const esp_ble_adv_data_t ble_adv_data = {

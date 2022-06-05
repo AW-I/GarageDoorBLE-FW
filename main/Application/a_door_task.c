@@ -80,7 +80,6 @@ void door_task(void * arg)
     vTaskDelete(NULL);
 }
 
-
 /* Callback functions */
 esp_err_t handle_open_door(uint8_t * rxBuffer, uint32_t rxSize) {
     esp_err_t ret = ESP_OK;

@@ -8,5 +8,6 @@ esp_err_t ble_deinit(void);
 uint32_t ble_receive(uint8_t * rxBuffer, uint32_t maxDataSize, uint32_t timeout);
 esp_err_t ble_send(uint8_t * txBuffer, uint32_t txDataSize);
 esp_err_t ble_set_ap_name(uint8_t * rxBuffer, uint32_t rxSize);
+uint32_t ble_get_connected_duration();
 
 #endif

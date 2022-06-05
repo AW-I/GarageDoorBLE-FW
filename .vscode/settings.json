@@ -49,7 +49,9 @@
     "numeric": "c",
     "fstream": "c",
     "iostream": "c",
-    "d_config.h": "c"
+    "d_config.h": "c",
+    "a_watchdog_task.h": "c",
+    "d_ble.h": "c"
   },
   "idf.adapterTargetName": "esp32",
   "idf.portWin": "COM21",
