@@ -10,7 +10,7 @@
 #define DOOR_DELAY 100
 #define PASS_TIMEOUT 200
 
-static const char* TAG = "Door Api";
+static const char* TAG = "DOOR_API";
 static volatile uint8_t passUnlocked = pdFALSE;
 static volatile uint32_t passUnlockedTime = 0;
 
@@ -22,7 +22,7 @@ esp_err_t door_init(void){
     //Config init
     err = config_init();
     if(err != ESP_OK) {
-        ESP_LOGI(TAG, "Failed to init config.");
+        ESP_LOGE(TAG, "Failed to init config.");
         return err;
     }
     //Config gpio

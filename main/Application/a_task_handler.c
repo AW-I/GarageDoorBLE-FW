@@ -3,9 +3,6 @@
 #include "a_task_handler.h"
 #include "a_door_task.h"
 #include "a_watchdog_task.h"
-#include "esp_log.h"
-
-static const char* TAG = "Task Handler";
 
 void task_init(void)
 {
@@ -15,5 +12,4 @@ void task_init(void)
 #if WATCHDOG_TASK
     watchdog_task_init();
 #endif
-    ESP_LOGI(TAG, "User Applications Started.");
 }

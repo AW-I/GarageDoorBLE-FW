@@ -4,19 +4,17 @@
 #include "esp_log.h"
 
 #include "a_watchdog_task.h"
+#include "m_system_api.h"
 #include "m_ble_api.h"
 
-#define TASK_NAME "DoorTask"
+#define TASK_NAME "Watchdog"
 #define HEAP_SIZE 2048
-#define REBOOT_DELAY 100
 #define POLL_TIME 1 * 100 // 1 Second
 
 //Static functions
-void reboot();
 void watchdog_task(void * arg);
-
 //Variables
-static const char* TAG = "Watchdog";
+static const char* TAG = "WTG_TASK";
 
 void watchdog_task_init(void) {
     ble_init();
@@ -33,19 +31,15 @@ void watchdog_task(void * arg)
         if(connectionDuration > 0) {
             if(connectionDuration > CONNECT_TIMEOUT){
                 ESP_LOGI(TAG, "Device timeout reboot.");
-                reboot();
+                system_reboot();
             }
         //Reboot if not connected but upTime longer than timeout
         } else if(upTime > REBOOT_FREQUENCY) { 
             ESP_LOGI(TAG, "Periodic reboot.");
-            reboot();
+            system_reboot();
         }
         vTaskDelay(POLL_TIME);
     }
     vTaskDelete(NULL);
 }
 
-void reboot() {
-
-    while(1);
-}

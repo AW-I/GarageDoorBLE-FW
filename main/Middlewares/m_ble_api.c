@@ -5,7 +5,7 @@
 #include "d_ble.h"
 #include "d_config.h"
 
-static const char* TAG = "BLE Api";
+static const char* TAG = "BLE_API";
 static volatile bool drvInitialized = false;
 
 esp_err_t ble_init(void) {
@@ -25,14 +25,13 @@ esp_err_t ble_init(void) {
         ESP_LOGI(TAG, "BLE initialized.");
     } else {
         ESP_LOGI(TAG, "BLE already initialized.");
-
     }
     return ret;
 }
 
 esp_err_t ble_deinit(void) {
     ESP_LOGI(TAG, "BLE de-initialized.");
-    return ESP_OK;
+    return ble_drv_deinit();
 }
 
 uint32_t ble_receive(uint8_t * rxBuffer, uint32_t maxDataSize, uint32_t timeout) {
@@ -55,6 +54,10 @@ esp_err_t ble_set_ap_name(uint8_t * rxBuffer, uint32_t rxSize) {
         return ESP_ERR_INVALID_ARG;
     }
     return config_set_name(rxBuffer,namesize);
+}
+
+esp_err_t ble_disconnect(void) {
+    return ble_drv_disconnect();
 }
 
 uint32_t ble_get_connected_duration() {

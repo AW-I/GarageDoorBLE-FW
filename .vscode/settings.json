@@ -51,10 +51,13 @@
     "iostream": "c",
     "d_config.h": "c",
     "a_watchdog_task.h": "c",
-    "d_ble.h": "c"
+    "d_ble.h": "c",
+    "esp_system.h": "c",
+    "complex": "c",
+    "m_system_api.h": "c"
   },
   "idf.adapterTargetName": "esp32",
-  "idf.portWin": "COM21",
+  "idf.portWin": "COM3",
   "idf.openOcdConfigs": [
     "interface/ftdi/esp32_devkitj_v1.cfg",
     "target/esp32.cfg"

@@ -3,7 +3,7 @@
 #include "nvs_flash.h"
 #include "esp_log.h"
 
-static const char* TAG = "Config";
+static const char* TAG = "CFG_DRV";
 
 #define STORAGE_NAMESPACE "config"
 #define PASS_KEY "pass"
@@ -71,7 +71,7 @@ uint8_t config_get_pass(uint8_t ** pass) {
     //Read password
     err = nvs_get_str(handle,PASS_KEY,(char *)&passBuff,(size_t *)&passLen);
     if(err != ESP_OK){
-        ESP_LOGE(TAG, "Failed to read pass from NVS: %d.",err);
+        ESP_LOGE(TAG, "Failed to read pass from NVS(%d), using default.",err);
     }
     //Set return vals
     *pass = passBuff;
@@ -96,7 +96,7 @@ uint8_t config_get_name(uint8_t ** name){
     //Read name
     err = nvs_get_str(handle,NAME_KEY,(char *)nameBuff,(size_t *)&nameLen);
     if(err != ESP_OK){
-        ESP_LOGE(TAG, "Failed to read name from NVS: %d.",err);
+        ESP_LOGE(TAG, "Failed to read name from NVS(%d), using default.",err);
     }
     //Set return vals
     *name = nameBuff;

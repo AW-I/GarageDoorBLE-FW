@@ -58,5 +58,5 @@ static const esp_gatts_attr_db_t gdp_gatt_db[GDP_IDX_NB] =
 
 /** Functions **/
 void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
-
+esp_err_t gatts_close(bool shutdown);
 #endif

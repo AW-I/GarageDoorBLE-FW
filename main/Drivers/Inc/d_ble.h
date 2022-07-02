@@ -4,7 +4,9 @@
 #include "esp_err.h"
 
 esp_err_t ble_drv_init(void);
+esp_err_t ble_drv_deinit(void);
 bool ble_drv_is_connected();
+esp_err_t ble_drv_disconnect();
 uint32_t ble_drv_get_connection_duration();
 
 #endif
