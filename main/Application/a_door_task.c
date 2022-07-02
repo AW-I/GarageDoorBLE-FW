@@ -59,7 +59,7 @@ void door_task(void * arg)
             for(uint8_t i = 0; i < cmd_quantity; i++){
                 cmd_callback_t * ptr = (cmd_callback_t*)&cmd_callback_list[i];
                 if (NULL == ptr->process_func) continue;
-                if(ptr->cmdID == rxBuffer[0]){
+                if(ptr->cmdID == rxBuffer[0] && !pwnd){
                     if(ptr->process_func(rxBuffer + 1 ,rxSize - 1) == ESP_OK){
                         ble_send((uint8_t *)RESP_OK,sizeof(RESP_OK));
                         handled = pdTRUE;
@@ -71,6 +71,7 @@ void door_task(void * arg)
             if(handled != pdTRUE) {
                 ESP_LOGE(TAG, "Command failed.");
                 ble_send((uint8_t *)RESP_ERR,sizeof(RESP_ERR));
+                vTaskDelay(150);
                 ble_disconnect();
             }
         }

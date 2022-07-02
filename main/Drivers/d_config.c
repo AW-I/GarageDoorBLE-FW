@@ -32,7 +32,7 @@ esp_err_t config_set_pass(uint8_t * pass, uint8_t passLen) {
     //Open Handle
     err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &handle);
     if (err != ESP_OK){
-        ESP_LOGE(TAG, "Failed to open NVS: %d.",err);
+        ESP_LOGE(TAG, "Failed to open NVS: %s.",esp_err_to_name(err));
         return 0;
     }
     err = nvs_set_str(handle,PASS_KEY,(char *)pass);
@@ -50,7 +50,7 @@ esp_err_t config_set_name(uint8_t * name, uint8_t nameLen) {
     //Open Handle
     err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &handle);
     if (err != ESP_OK){
-        ESP_LOGE(TAG, "Failed to open NVS: %d.",err);
+        ESP_LOGE(TAG, "Failed to open NVS: %s.",esp_err_to_name(err));
         return 0;
     }
     err = nvs_set_str(handle,NAME_KEY,(char *)name);
@@ -65,13 +65,13 @@ uint8_t config_get_pass(uint8_t ** pass) {
     //Open Handle
     err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &handle);
     if (err != ESP_OK){
-        ESP_LOGE(TAG, "Failed to open NVS: %d.",err);
+        ESP_LOGE(TAG, "Failed to open NVS: %s.",esp_err_to_name(err));
         return 0;
     }
     //Read password
     err = nvs_get_str(handle,PASS_KEY,(char *)&passBuff,(size_t *)&passLen);
     if(err != ESP_OK){
-        ESP_LOGE(TAG, "Failed to read pass from NVS(%d), using default.",err);
+        ESP_LOGE(TAG, "Failed to read pass from NVS(%s), using default.",esp_err_to_name(err));
     }
     //Set return vals
     *pass = passBuff;
@@ -90,13 +90,13 @@ uint8_t config_get_name(uint8_t ** name){
     //Open Handle
     err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &handle);
     if (err != ESP_OK){
-        ESP_LOGE(TAG, "Failed to open NVS: %d.",err);
+        ESP_LOGE(TAG, "Failed to open NVS: %s.",esp_err_to_name(err));
         return 0;
     }
     //Read name
     err = nvs_get_str(handle,NAME_KEY,(char *)nameBuff,(size_t *)&nameLen);
     if(err != ESP_OK){
-        ESP_LOGE(TAG, "Failed to read name from NVS(%d), using default.",err);
+        ESP_LOGE(TAG, "Failed to read name from NVS(%s), using default.",esp_err_to_name(err));
     }
     //Set return vals
     *name = nameBuff;

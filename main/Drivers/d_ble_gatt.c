@@ -91,8 +91,8 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
 					//Clear the TX Buffer
 					memset(txBuffer,0,sizeof(txBuffer));
 					esp_err_t err = ble_queue_rcv_push(p_data->write.value,p_data->write.len);
-					if(err) {
-						ESP_LOGD(TAG, "ESP_GATTS_WRITE_EVT : Failed to write to queue!");
+					if(err != ESP_OK) {
+						ESP_LOGD(TAG, "Failed to write to queue: %s",esp_err_to_name(err));
 					}
                 }
             }

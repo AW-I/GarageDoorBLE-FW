@@ -70,7 +70,7 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
                 (bd_addr[0] << 24) + (bd_addr[1] << 16) + (bd_addr[2] << 8) + bd_addr[3],
                 (bd_addr[4] << 8) + bd_addr[5]);
         ESP_LOGD(TAG, "address type = %d", param->ble_security.auth_cmpl.addr_type);
-        ESP_LOGD(TAG, "pair status = %s",param->ble_security.auth_cmpl.success ? "success" : "fail");
+        ESP_LOGD(TAG, "pair status = %s",param->ble_security.auth_cmpl.success ? "Success" : "Fail");
         if(!param->ble_security.auth_cmpl.success) {
             ESP_LOGE(TAG, "Pair failed reason = 0x%x",param->ble_security.auth_cmpl.fail_reason);
         } else {
@@ -95,14 +95,14 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
 
         esp_err_t ret = esp_ble_gap_config_adv_data((esp_ble_adv_data_t *)&ble_adv_data);
         if (ret){
-            ESP_LOGE(TAG, "Config adv data failed, error code = %x", ret);
+            ESP_LOGE(TAG, "Config adv data failed, error code = %s", esp_err_to_name(ret));
         }else{
             adv_config_done |= ADV_CONFIG_FLAG;
         }
 
         ret = esp_ble_gap_config_adv_data(&ble_scan_rsp_config);
         if (ret){
-            ESP_LOGE(TAG, "Config adv data failed, error code = %x", ret);
+            ESP_LOGE(TAG, "Config adv data failed, error code = %s", esp_err_to_name(ret));
         }else{
             adv_config_done |= SCAN_RSP_CONFIG_FLAG;
         }

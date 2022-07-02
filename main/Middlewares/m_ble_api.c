@@ -13,12 +13,12 @@ esp_err_t ble_init(void) {
     if (drvInitialized == false) {
         ret = ble_drv_init();
         if(ret != ESP_OK) {
-            ESP_LOGE(TAG, "BLE failed to start with code: %d.",ret);
+            ESP_LOGE(TAG, "BLE failed to start.");
             return ret;
         } 
         ret = ble_queue_init();
             if(ret != ESP_OK) {
-            ESP_LOGE(TAG, "BLE queue failed to init with code: %d.",ret);
+            ESP_LOGE(TAG, "BLE queue failed to init: %s.",esp_err_to_name(ret));
             return ret;
         } 
         drvInitialized = true;

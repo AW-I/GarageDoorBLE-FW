@@ -17,25 +17,24 @@ esp_err_t ble_drv_init(void) {
 
     ret = esp_bt_controller_init(&bt_cfg);
     if (ret) {
-        ESP_LOGE(TAG, "%s enable controller failed: %s", __func__, esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Init BLE controller failed: %s", esp_err_to_name(ret));
         return ret;
     }
 
     ret = esp_bt_controller_enable(ESP_BT_MODE_BLE);
     if (ret) {
-        ESP_LOGE(TAG, "%s enable controller failed: %s", __func__, esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Enable BLE controller failed: %s", esp_err_to_name(ret));
         return ret;
     }
 
-    ESP_LOGI(TAG, "%s init bluetooth", __func__);
     ret = esp_bluedroid_init();
     if (ret) {
-        ESP_LOGE(TAG, "%s init bluetooth failed: %s", __func__, esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Init Bluedroid failed: %s", esp_err_to_name(ret));
         return ret;
     }
     ret = esp_bluedroid_enable();
     if (ret) {
-        ESP_LOGE(TAG, "%s enable bluetooth failed: %s", __func__, esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Enable Bluedroid failed: %s", esp_err_to_name(ret));
         return ret;
     }
     esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT,ESP_PWR_LVL_P9);
@@ -65,7 +64,6 @@ esp_err_t ble_drv_init(void) {
     and the init key means which key you can distribute to the slave. */
     esp_ble_gap_set_security_param(ESP_BLE_SM_SET_INIT_KEY, &init_key, sizeof(uint8_t));
     esp_ble_gap_set_security_param(ESP_BLE_SM_SET_RSP_KEY, &rsp_key, sizeof(uint8_t));
-
     return ret;
 }
 
@@ -87,4 +85,3 @@ bool ble_drv_is_connected() {
 uint32_t ble_drv_get_connection_duration() {
     return xTaskGetTickCount() - connection_time;
 }
-    
