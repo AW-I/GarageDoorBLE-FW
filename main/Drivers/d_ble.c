@@ -17,24 +17,24 @@ esp_err_t ble_drv_init(void) {
 
     ret = esp_bt_controller_init(&bt_cfg);
     if (ret) {
-        ESP_LOGE(TAG, "Init BLE controller failed: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Init BLE controller failed: %s.", esp_err_to_name(ret));
         return ret;
     }
 
     ret = esp_bt_controller_enable(ESP_BT_MODE_BLE);
     if (ret) {
-        ESP_LOGE(TAG, "Enable BLE controller failed: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Enable BLE controller failed: %s.", esp_err_to_name(ret));
         return ret;
     }
 
     ret = esp_bluedroid_init();
     if (ret) {
-        ESP_LOGE(TAG, "Init Bluedroid failed: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Init Bluedroid failed: %s.", esp_err_to_name(ret));
         return ret;
     }
     ret = esp_bluedroid_enable();
     if (ret) {
-        ESP_LOGE(TAG, "Enable Bluedroid failed: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Enable Bluedroid failed: %s.", esp_err_to_name(ret));
         return ret;
     }
     esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT,ESP_PWR_LVL_P9);

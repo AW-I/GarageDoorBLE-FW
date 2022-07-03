@@ -24,7 +24,7 @@ esp_err_t ble_init(void) {
         drvInitialized = true;
         ESP_LOGI(TAG, "BLE initialized.");
     } else {
-        ESP_LOGI(TAG, "BLE already initialized.");
+        ESP_LOGD(TAG, "BLE already initialized.");
     }
     return ret;
 }
@@ -45,7 +45,7 @@ esp_err_t ble_send(uint8_t * txBuffer, uint32_t txDataSize) {
 esp_err_t ble_set_ap_name(uint8_t * rxBuffer, uint32_t rxSize) {
     //Size checks
     if(!rxSize ) {
-        ESP_LOGE(TAG, "RX buffer was empty");
+        ESP_LOGE(TAG, "RX buffer was empty.");
         return ESP_ERR_INVALID_ARG;
     }
     uint32_t namesize = strlen((char *)rxBuffer);

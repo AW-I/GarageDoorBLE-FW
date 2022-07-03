@@ -123,13 +123,6 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
     	    is_connected = true;
 			connection_time = xTaskGetTickCount();
     	    memcpy(&remote_bda,&p_data->connect.remote_bda,sizeof(esp_bd_addr_t));
-			ESP_LOGI(TAG, "%02x:%02x:%02x:%02x:%02x:%02x",
-			p_data->connect.remote_bda[0],
-			p_data->connect.remote_bda[1],
-			p_data->connect.remote_bda[2],
-			p_data->connect.remote_bda[3],
-			p_data->connect.remote_bda[4],
-			p_data->connect.remote_bda[5]);
 			esp_ble_set_encryption(param->connect.remote_bda, ESP_BLE_SEC_ENCRYPT_MITM);
         	break;
     	case ESP_GATTS_DISCONNECT_EVT:
