@@ -41,6 +41,7 @@ static const cmd_callback_t cmd_callback_list[] = {
 };
 
 void door_task_init(void) {
+    verify_config();
     ble_init();
     door_init();
     xTaskCreate(door_task, TASK_NAME, HEAP_SIZE, NULL, 4 , NULL);

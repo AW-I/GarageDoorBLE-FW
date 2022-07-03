@@ -9,11 +9,7 @@ bool verify_firmware(void);
 
 
 void task_init(void)
-{
-    if(!verify_firmware()) {
-        return;
-    }
-    
+{    
 #if DOOR_TASK
         door_task_init();
 #endif
@@ -21,8 +17,4 @@ void task_init(void)
         watchdog_task_init();
 #endif
 
-}
-
-bool verify_firmware(void){
-    return verify_config() && verify_crc();
 }

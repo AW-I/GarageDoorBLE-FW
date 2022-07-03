@@ -17,7 +17,7 @@ void app_main(void)
 
 /* Base Drivers */
 void log_init(void){
-    esp_log_level_t logLevel = ESP_LOG_INFO;
+    esp_log_level_t logLevel = ESP_LOG_DEBUG;
     //Task
     esp_log_level_set("DOOR_TASK",logLevel);
     esp_log_level_set("WTG_TASK",logLevel);
@@ -25,6 +25,7 @@ void log_init(void){
     //API
     esp_log_level_set("BLE_API",logLevel);
     esp_log_level_set("DOOR_API",logLevel);
+    esp_log_level_set("SYS_API",logLevel);
 
     //Driver
     esp_log_level_set("BLE_DRV",logLevel);

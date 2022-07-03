@@ -100,7 +100,7 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
             adv_config_done |= ADV_CONFIG_FLAG;
         }
 
-        ret = esp_ble_gap_config_adv_data(&ble_scan_rsp_config);
+        ret = esp_ble_gap_config_adv_data((esp_ble_adv_data_t *) &ble_scan_rsp_config);
         if (ret){
             ESP_LOGE(TAG, "Config adv data failed, error code = %s", esp_err_to_name(ret));
         }else{

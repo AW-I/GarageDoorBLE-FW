@@ -24,6 +24,7 @@ void watchdog_task_init(void) {
 void watchdog_task(void * arg)
 {
     ESP_LOGI(TAG, "Watchdog started.");
+    verify_crc();
     for(;;){
         uint32_t upTime = xTaskGetTickCount();
         uint32_t connectionDuration = ble_get_connected_duration();
