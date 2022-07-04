@@ -27,7 +27,7 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
     case ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT:
         adv_config_done &= (~ADV_CONFIG_FLAG);
         if (adv_config_done == 0){
-            ESP_LOGD(TAG, "ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT");
+            ESP_LOGD(TAG, "ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT"); 
             esp_ble_gap_start_advertising((esp_ble_adv_params_t *)&ble_adv_params);
         }
         break;

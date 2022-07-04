@@ -49,7 +49,7 @@ esp_err_t ble_drv_init(void) {
     uint8_t init_key = ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK;
     uint8_t rsp_key = ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK;
     //set static passkey
-    uint32_t passkey = 6456;
+    uint32_t passkey = 666666;
     uint8_t auth_option = ESP_BLE_ONLY_ACCEPT_SPECIFIED_AUTH_DISABLE;
     uint8_t oob_support = ESP_BLE_OOB_DISABLE;
     esp_ble_gap_set_security_param(ESP_BLE_SM_SET_STATIC_PASSKEY, &passkey, sizeof(uint32_t));
@@ -58,10 +58,6 @@ esp_err_t ble_drv_init(void) {
     esp_ble_gap_set_security_param(ESP_BLE_SM_MAX_KEY_SIZE, &key_size, sizeof(uint8_t));
     esp_ble_gap_set_security_param(ESP_BLE_SM_ONLY_ACCEPT_SPECIFIED_SEC_AUTH, &auth_option, sizeof(uint8_t));
     esp_ble_gap_set_security_param(ESP_BLE_SM_OOB_SUPPORT, &oob_support, sizeof(uint8_t));
-    /* If your BLE device acts as a Slave, the init_key means you hope which types of key of the master should distribute to you,
-    and the response key means which key you can distribute to the master;
-    If your BLE device acts as a master, the response key means you hope which types of key of the slave should distribute to you,
-    and the init key means which key you can distribute to the slave. */
     esp_ble_gap_set_security_param(ESP_BLE_SM_SET_INIT_KEY, &init_key, sizeof(uint8_t));
     esp_ble_gap_set_security_param(ESP_BLE_SM_SET_RSP_KEY, &rsp_key, sizeof(uint8_t));
     return ret;
