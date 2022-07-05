@@ -69,8 +69,9 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
 				memset(&rsp,0,sizeof(rsp));
 				//If theres not a current message try to use existing.
 				if(!recSize){
-					recSize = strlen((char *)txBuffer);
-					if(!recSize || recSize > sizeof(txBuffer)) {
+					ESP_LOGD(TAG, "No RX message in queue.");
+					recSize = strnlen((char *)txBuffer,sizeof(txBuffer));
+					if(recSize > sizeof(txBuffer)) {
 						recSize = 0;
 					}
 				}

@@ -8,6 +8,10 @@
 #include "m_ble_api.h"
 #include "m_door_api.h"
 
+#define DOOR_DEBOUNCE 100
+#define DISCONNECT_DELAY 100
+#define POLL_PERIOD 25
+
 #define TASK_NAME "DoorTask"
 #define HEAP_SIZE 2048
 
@@ -23,20 +27,25 @@ esp_err_t handle_open_door(uint8_t * rxBuffer, uint32_t rxSize);
 esp_err_t handle_ap_name(uint8_t * rxBuffer, uint32_t rxSize);
 esp_err_t handle_ap_pass(uint8_t * rxBuffer, uint32_t rxSize);
 esp_err_t handle_reboot(uint8_t * rxBuffer, uint32_t rxSize);
+void handle_door_reset(void);
 
 static const cmd_callback_t cmd_callback_list[] = {
 		{
 				.cmdID = CMD_OPEN,
-				.process_func = handle_open_door
+				.process_func = handle_open_door,
+                .post_func = handle_door_reset
 		}, {
 				.cmdID = CMD_AP_NAME,
-				.process_func = handle_ap_name
+				.process_func = handle_ap_name,
+                .post_func = NULL
 		}, {
 				.cmdID = CMD_AP_PASS,
-				.process_func = handle_ap_pass
+				.process_func = handle_ap_pass,
+                .post_func = NULL
 		}, {
                 .cmdID = CMD_REBOOT,
-				.process_func = handle_reboot
+				.process_func = handle_reboot,
+                .post_func = NULL
         }
 };
 
@@ -62,8 +71,11 @@ void door_task(void * arg)
                 if (NULL == ptr->process_func) continue;
                 if(ptr->cmdID == rxBuffer[0] && !pwnd){
                     if(ptr->process_func(rxBuffer + 1 ,rxSize - 1) == ESP_OK){
-                        ble_send((uint8_t *)RESP_OK,sizeof(RESP_OK));
                         handled = pdTRUE;
+                        ble_send((uint8_t *)RESP_OK,sizeof(RESP_OK));
+                        if(NULL != ptr->post_func) {
+                            ptr->post_func();
+                        }
                     } 
                     break;
                 }
@@ -72,12 +84,12 @@ void door_task(void * arg)
             if(handled != pdTRUE) {
                 ESP_LOGE(TAG, "Command failed.");
                 ble_send((uint8_t *)RESP_ERR,sizeof(RESP_ERR));
-                vTaskDelay(150);
+                vTaskDelay(DISCONNECT_DELAY);
                 ble_disconnect();
             }
         }
         //Sleep
-        vTaskDelay(50);
+        vTaskDelay(POLL_PERIOD);
     }
     vTaskDelete(NULL);
 }
@@ -92,6 +104,11 @@ esp_err_t handle_open_door(uint8_t * rxBuffer, uint32_t rxSize) {
         ESP_LOGE(TAG, "Door open request failed.");
     }
     return ret;
+}
+
+void handle_door_reset(void) {
+    vTaskDelay(DOOR_DEBOUNCE);
+    door_reset();
 }
 
 esp_err_t handle_ap_name(uint8_t * rxBuffer, uint32_t rxSize) {

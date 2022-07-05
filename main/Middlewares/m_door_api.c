@@ -14,7 +14,6 @@ static const char* TAG = "DOOR_API";
 static volatile uint8_t passUnlocked = pdFALSE;
 static volatile uint32_t passUnlockedTime = 0;
 
-void door_idle();
 void door_open();
 
 esp_err_t door_init(void){
@@ -28,14 +27,14 @@ esp_err_t door_init(void){
     //Config gpio
     gpio_reset_pin(DOOR_GPIO);
     gpio_set_direction(DOOR_GPIO, GPIO_MODE_OUTPUT);
-    door_idle();
+    door_reset();
     //OK
     ESP_LOGI(TAG, "Door initialized.");
     return ESP_OK;
 }
 
 esp_err_t door_deinit(void){
-    door_idle();
+    door_reset();
     ESP_LOGI(TAG, "Door de-initialized.");
     return ESP_OK;
 }
@@ -92,17 +91,15 @@ esp_err_t door_toggle_open(uint8_t * pass, uint32_t passLen){
     if(memcmp(passBuff,pass,sizeof(passBuffLen))){
         return ESP_FAIL;
     } 
-    //Close connection and then open.
+    //Open
     door_open();
-    vTaskDelay(DOOR_DELAY);
-    door_idle();
     return ESP_OK;
 }
 
-void door_open() {
-    gpio_set_level(DOOR_GPIO,1);
+void door_reset(void){
+    gpio_set_level(DOOR_GPIO,0);
 }
 
-void door_idle(){
-    gpio_set_level(DOOR_GPIO,0);
+void door_open(void) {
+    gpio_set_level(DOOR_GPIO,1);
 }
