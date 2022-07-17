@@ -55,8 +55,8 @@ esp_err_t door_change_pass(uint8_t * pass, uint32_t passLen) {
         if(passBuffLen <= 0 || passBuff == NULL) {
             return ESP_FAIL;
         }
-        //Compare
-        if(memcmp(passBuff,pass,sizeof(passBuffLen))){
+        //Compare length & data
+        if(passLen != passBuffLen || memcmp(passBuff,pass,sizeof(passBuffLen))){
             return ESP_FAIL;
         } 
         //Unlock and timestamp.
@@ -87,8 +87,8 @@ esp_err_t door_toggle_open(uint8_t * pass, uint32_t passLen){
     if(passBuffLen <= 0 || passBuff == NULL) {
         return ESP_FAIL;
     }
-    //Check password
-    if(memcmp(passBuff,pass,sizeof(passBuffLen))){
+    //Check password and size
+    if(passLen != passBuffLen || memcmp(passBuff,pass,sizeof(passBuffLen))){
         return ESP_FAIL;
     } 
     //Open
