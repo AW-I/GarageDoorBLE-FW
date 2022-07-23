@@ -72,7 +72,9 @@ void door_task(void * arg)
                 if(ptr->cmdID == rxBuffer[0] && !pwnd){
                     if(ptr->process_func(rxBuffer + 1 ,rxSize - 1) == ESP_OK){
                         handled = pdTRUE;
-                        ble_send((uint8_t *)RESP_OK,sizeof(RESP_OK));
+                        if(ble_send((uint8_t *)RESP_OK,sizeof(RESP_OK)) != ESP_OK) {
+                            ESP_LOGE(TAG, "Failed to send reply.");
+                        }
                         if(NULL != ptr->post_func) {
                             ptr->post_func();
                         }
@@ -83,7 +85,9 @@ void door_task(void * arg)
             //Log the failed command, cya.
             if(handled != pdTRUE) {
                 ESP_LOGE(TAG, "Command failed.");
-                ble_send((uint8_t *)RESP_ERR,sizeof(RESP_ERR));
+                if(ble_send((uint8_t *)RESP_ERR,sizeof(RESP_ERR)) != ESP_OK) {
+                    ESP_LOGE(TAG, "Failed to send reply.");
+                }
                 vTaskDelay(DISCONNECT_DELAY);
                 ble_disconnect();
             }
@@ -115,8 +119,11 @@ esp_err_t handle_ap_name(uint8_t * rxBuffer, uint32_t rxSize) {
     esp_err_t ret = ESP_OK;
     ret = ble_set_ap_name(rxBuffer,rxSize);
     if(ret == ESP_OK) {
-        ESP_LOGI(TAG, "Changed AP name succesfully.");
-    } else {
+        ESP_LOGI(TAG, "Changed AP name successfully.");
+    } else if(ret == ESP_ERR_NOT_FINISHED) {
+        ESP_LOGI(TAG, "AP Name unlocked.");
+        ret = ESP_OK;
+    } else{
         ESP_LOGE(TAG, "AP name change request failed.");
     }
     return ret;
@@ -126,7 +133,7 @@ esp_err_t handle_ap_pass(uint8_t * rxBuffer, uint32_t rxSize) {
     esp_err_t ret = ESP_OK;
     ret = door_change_pass(rxBuffer,rxSize);
     if(ret == ESP_OK) {
-        ESP_LOGI(TAG, "Changed door password succesfully.");
+        ESP_LOGI(TAG, "Changed door password successfully.");
     } else if(ret == ESP_ERR_NOT_FINISHED) {
         ESP_LOGI(TAG, "Door password unlocked.");
         ret = ESP_OK;

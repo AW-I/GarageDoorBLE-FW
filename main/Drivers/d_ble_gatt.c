@@ -11,7 +11,7 @@
 #include "d_ble_gatt.h"
 #include "d_ble_queue.h"
 
-#define BLE_TIMEOUT 10
+#define BLE_TIMEOUT 100
 
 static const char* TAG = "BLE_GATT";
 
@@ -69,11 +69,7 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
 				memset(&rsp,0,sizeof(rsp));
 				//If theres not a current message try to use existing.
 				if(!recSize){
-					ESP_LOGD(TAG, "No RX message in queue.");
-					recSize = strnlen((char *)txBuffer,sizeof(txBuffer));
-					if(recSize > sizeof(txBuffer)) {
-						recSize = 0;
-					}
+					ESP_LOGE(TAG, "No response for this request.");
 				}
 				//Set response and send
 				rsp.attr_value.handle = param->read.handle;

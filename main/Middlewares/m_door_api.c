@@ -56,7 +56,7 @@ esp_err_t door_change_pass(uint8_t * pass, uint32_t passLen) {
             return ESP_FAIL;
         }
         //Compare length & data
-        if(passLen != passBuffLen || memcmp(passBuff,pass,sizeof(passBuffLen))){
+        if(passLen != passBuffLen || memcmp(passBuff,pass,passBuffLen)){
             return ESP_FAIL;
         } 
         //Unlock and timestamp.
@@ -66,7 +66,7 @@ esp_err_t door_change_pass(uint8_t * pass, uint32_t passLen) {
     } else{
         //Set the password.
         uint32_t passSize = strlen((char *)pass);
-        if(!passSize || passSize > MAX_NAME_LEN) {
+        if(!passSize || passSize > MAX_PASS_LEN) {
             ESP_LOGE(TAG, "Calculated pass size invalid: %d.",passSize);
             return ESP_ERR_INVALID_ARG;
         }
@@ -88,7 +88,7 @@ esp_err_t door_toggle_open(uint8_t * pass, uint32_t passLen){
         return ESP_FAIL;
     }
     //Check password and size
-    if(passLen != passBuffLen || memcmp(passBuff,pass,sizeof(passBuffLen))){
+    if(passLen != passBuffLen || memcmp(passBuff,pass,passBuffLen)){
         return ESP_FAIL;
     } 
     //Open

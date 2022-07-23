@@ -60,8 +60,7 @@ esp_err_t config_set_name(uint8_t * name, uint8_t nameLen) {
 uint8_t config_get_pass(uint8_t ** pass) {
     esp_err_t err;
     nvs_handle_t handle;
-    uint8_t passLen = MAX_PASS_LEN;
-
+    size_t passLen = MAX_PASS_LEN;
     //Open Handle
     err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &handle);
     if (err != ESP_OK){
@@ -69,12 +68,13 @@ uint8_t config_get_pass(uint8_t ** pass) {
         return 0;
     }
     //Read password
-    err = nvs_get_str(handle,PASS_KEY,(char *)&passBuff,(size_t *)&passLen);
+    err = nvs_get_str(handle,PASS_KEY,(char *)passBuff,&passLen);
     if(err != ESP_OK){
         ESP_LOGE(TAG, "Failed to read password(%s), using %s.",esp_err_to_name(err),DEFAULT_PASS);
     }
     //Set return vals
     *pass = passBuff;
+    passLen = strlen((char *)passBuff);
     if (passLen < MIN_PASS_LEN || passLen > MAX_PASS_LEN) {
         ESP_LOGE(TAG, "Password length was invalid: %d.",passLen);
         passLen = 0;
@@ -100,6 +100,7 @@ uint8_t config_get_name(uint8_t ** name){
     }
     //Set return vals
     *name = nameBuff;
+    nameLen = strlen((char *)nameBuff);
     if (nameLen < MIN_NAME_LEN || nameLen > MAX_NAME_LEN) {
         ESP_LOGE(TAG, "AP Name length was invalid: %d.", nameLen);
         nameLen = 0;

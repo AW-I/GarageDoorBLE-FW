@@ -5,7 +5,7 @@
 
 #include "d_ble_queue.h"
 
-#define QUEUE_SIZE 1
+#define QUEUE_SIZE 3
 
 QueueHandle_t rx_queue = NULL;
 QueueHandle_t tx_queue = NULL;
