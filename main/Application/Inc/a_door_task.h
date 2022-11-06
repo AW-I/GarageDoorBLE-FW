@@ -2,10 +2,11 @@
 #define __A_DOOR_TASK_H_
 
 typedef enum {
-    CMD_OPEN,
-    CMD_AP_NAME,
-    CMD_AP_PASS,
-    CMD_REBOOT
+    CMD_OPEN = 0,
+    CMD_OPEN_ALT = '0',
+    CMD_AP_NAME = 1,
+    CMD_AP_PASS = 2,
+    CMD_REBOOT = 3
 } cmd_t;
 
 typedef struct cmd_callback_struct {

@@ -15,6 +15,7 @@ static const char* TAG = "SYS_API";
 #define FLASH_ADDRESS_START 0x00010000
 #define FW_SIZE 0xAFFF4
 #define REBOOT_DELAY 100
+#define MAGIC 38269420
 
 static const char * name = DEFAULT_NAME;
 static const char * pass = DEFAULT_PASS;    
@@ -37,6 +38,7 @@ bool verify_crc(void) {
     //Calculate CRC
     uint32_t crc = 0;
     crc = crc32_le(crc, dataPtr, FW_SIZE);
+    crc = crc % MAGIC;
     //Compare.
     dataPtr += FW_SIZE;
     uint32_t expected = (uint32_t)*((uint32_t *)dataPtr);

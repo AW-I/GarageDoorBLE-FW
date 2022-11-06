@@ -14,12 +14,13 @@
 
 #define TASK_NAME "DoorTask"
 #define HEAP_SIZE 2048
+#define RX_BUFF_SIZE 20
 
 //Variables
 static const char* TAG = "DOOR_TASK";
 static const char RESP_OK[] = "OK\r\n";
 static const char RESP_ERR[] = "ERROR\r\n";
-static uint8_t rxBuffer[64] = {0};
+static uint8_t rxBuffer[RX_BUFF_SIZE] = {0};
 
 //Function definition.
 void door_task(void * arg);
@@ -32,6 +33,10 @@ void handle_door_reset(void);
 static const cmd_callback_t cmd_callback_list[] = {
 		{
 				.cmdID = CMD_OPEN,
+				.process_func = handle_open_door,
+                .post_func = handle_door_reset
+		}, {
+				.cmdID = CMD_OPEN_ALT,
 				.process_func = handle_open_door,
                 .post_func = handle_door_reset
 		}, {
@@ -56,8 +61,7 @@ void door_task_init(void) {
     xTaskCreate(door_task, TASK_NAME, HEAP_SIZE, NULL, 4 , NULL);
 }
 
-void door_task(void * arg)
-{
+void door_task(void * arg){
     uint8_t cmd_quantity = sizeof(cmd_callback_list)/ sizeof(cmd_callback_t);
     for(;;){
         //Receive message from ble
@@ -66,11 +70,12 @@ void door_task(void * arg)
         uint32_t rxSize = ble_receive(rxBuffer,sizeof(rxBuffer),portMAX_DELAY);
         if(rxSize > 0 ) {
             //Find the command
+            uint8_t key = rxBuffer[0];
             for(uint8_t i = 0; i < cmd_quantity; i++){
                 cmd_callback_t * ptr = (cmd_callback_t*)&cmd_callback_list[i];
                 if (NULL == ptr->process_func) continue;
-                if(ptr->cmdID == rxBuffer[0] && !pwnd){
-                    if(ptr->process_func(rxBuffer + 1 ,rxSize - 1) == ESP_OK){
+                if(ptr->cmdID == key && !pwnd){
+                    if(ptr->process_func(rxBuffer + 1, rxSize - 1) == ESP_OK){
                         handled = pdTRUE;
                         if(ble_send((uint8_t *)RESP_OK,sizeof(RESP_OK)) != ESP_OK) {
                             ESP_LOGE(TAG, "Failed to send reply.");
@@ -82,6 +87,7 @@ void door_task(void * arg)
                     break;
                 }
             }
+
             //Log the failed command, cya.
             if(handled != pdTRUE) {
                 ESP_LOGE(TAG, "Command failed.");

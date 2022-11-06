@@ -33,7 +33,7 @@ static const esp_ble_adv_data_t ble_scan_rsp_config = {
 //Param
  static const esp_ble_adv_params_t ble_adv_params = {
     .adv_int_min        = 0x040,
-    .adv_int_max        = 0x120,
+    .adv_int_max        = 0x140,
     .adv_type           = ADV_TYPE_IND,
     .own_addr_type      = BLE_ADDR_TYPE_RANDOM,
     .channel_map        = ADV_CHNL_ALL,

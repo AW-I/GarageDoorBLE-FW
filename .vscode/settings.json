@@ -59,7 +59,7 @@
     "esp_spi_flash.h": "c"
   },
   "idf.adapterTargetName": "esp32",
-  "idf.portWin": "COM3",
+  "idf.portWin": "COM8",
   "idf.openOcdConfigs": [
     "interface/ftdi/esp32_devkitj_v1.cfg",
     "target/esp32.cfg"
