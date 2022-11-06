@@ -47,12 +47,12 @@ static const esp_gatts_attr_db_t gdp_gatt_db[GDP_IDX_NB] =
 
     //GDP -  Data receive characteristic Declaration
     [GDP_IDX_DATA_RECV_CHAR]            =
-    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ_ENCRYPTED,
+    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ,
     CHAR_DECLARATION_SIZE,CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_write}},
 
     //GDP -  Data receive characteristic Value
     [GDP_IDX_DATA_RECV_VAL]                 =
-    {{ESP_GATT_RSP_BY_APP}, {ESP_UUID_LEN_128, (uint8_t *)&gdp_data_receive_uuid, ESP_GATT_PERM_WRITE_ENCRYPTED | ESP_GATT_PERM_READ_ENCRYPTED,
+    {{ESP_GATT_RSP_BY_APP}, {ESP_UUID_LEN_128, (uint8_t *)&gdp_data_receive_uuid, ESP_GATT_PERM_WRITE | ESP_GATT_PERM_READ,
     GDP_DATA_MAX_LEN,0, NULL}}
 };
 
