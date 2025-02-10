@@ -6,6 +6,7 @@
 #include "d_ble_queue.h"
 #include "d_ble.h"
 #include "d_config.h"
+#include "d_ble_gatt.h"
 
 #define PASS_TIMEOUT 200
 
@@ -13,6 +14,10 @@ static const char* TAG = "BLE_API";
 static volatile bool drvInitialized = false;
 static volatile uint8_t apUnlocked = pdFALSE;
 static volatile uint32_t apUnlockedTime = 0;
+
+void ble_update_door_status(uint8_t doorState, uint8_t doorMode) {
+    gatt_update_door_status(doorState | (doorMode << 1));
+}
 
 esp_err_t ble_init(void) {
     esp_err_t ret = ESP_OK;
@@ -76,7 +81,7 @@ esp_err_t ble_set_ap_name(uint8_t * data, uint32_t rxSize) {
         //Set the password.
         uint32_t apLen = strlen((char *)data);
         if(!apLen || apLen > MAX_NAME_LEN) {
-            ESP_LOGE(TAG, "Calculated name size invalid: %lu.",apLen);
+            ESP_LOGE(TAG, "Calculated name size invalid: %d.",(int)apLen);
             return ESP_ERR_INVALID_ARG;
         }
         ret = config_set_name(data,apLen);

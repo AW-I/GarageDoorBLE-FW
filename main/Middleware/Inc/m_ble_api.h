@@ -10,5 +10,6 @@ esp_err_t ble_send(uint8_t * txBuffer, uint32_t txDataSize);
 esp_err_t ble_set_ap_name(uint8_t * rxBuffer, uint32_t rxSize);
 uint32_t ble_get_connected_duration();
 esp_err_t ble_disconnect(void);
+void ble_update_door_status(uint8_t doorState, uint8_t doorMode);
 
 #endif

@@ -4,11 +4,6 @@
 #include "esp_log.h"
 #include "driver/gpio.h"
 #include "m_door_api.h"
-#include "d_config.h"
-
-#define DOOR_GPIO 33
-#define DOOR_DELAY 100
-#define PASS_TIMEOUT 200
 
 static const char* TAG = "DOOR_API";
 static volatile uint8_t passUnlocked = pdFALSE;
@@ -24,9 +19,14 @@ esp_err_t door_init(void){
         ESP_LOGE(TAG, "Failed to init config.");
         return err;
     }
-    //Config gpio
-    gpio_reset_pin(DOOR_GPIO);
-    gpio_set_direction(DOOR_GPIO, GPIO_MODE_OUTPUT);
+    //Config Output
+    gpio_reset_pin(GPIO_DOOR_OUTPUT);
+    gpio_set_direction(GPIO_DOOR_OUTPUT, GPIO_MODE_OUTPUT);
+    gpio_set_level(GPIO_DOOR_OUTPUT,GPIO_OFF);
+    //Config Input
+    gpio_reset_pin(GPIO_DOOR_INPUT);
+    gpio_set_direction(GPIO_DOOR_INPUT, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(GPIO_DOOR_INPUT,GPIO_PULLUP_ONLY);
     door_reset();
     //OK
     ESP_LOGI(TAG, "Door initialized.");
@@ -67,7 +67,7 @@ esp_err_t door_change_pass(uint8_t * pass, uint32_t passLen) {
         //Set the password.
         uint32_t passSize = strlen((char *)pass);
         if(!passSize || passSize > MAX_PASS_LEN) {
-            ESP_LOGE(TAG, "Calculated pass size invalid: %lu.",passSize);
+            ESP_LOGE(TAG, "Calculated pass size invalid: %d.",(int)passSize);
             return ESP_ERR_INVALID_ARG;
         }
         ret = config_set_pass(pass,passSize);
@@ -96,10 +96,34 @@ esp_err_t door_toggle_open(uint8_t * pass, uint32_t passLen){
     return ESP_OK;
 }
 
+door_state_t door_get_state(void) {
+    input_mode_t inputMode;
+    int level = gpio_get_level(GPIO_DOOR_INPUT);
+    do {
+        vTaskDelay(INPUT_DEBOUNCE);
+        level = gpio_get_level(GPIO_DOOR_INPUT);
+    } while(level != gpio_get_level(GPIO_DOOR_INPUT));
+    inputMode = config_get_input_mode();
+    return level ^ inputMode;
+}
+
+esp_err_t door_set_mode(input_mode_t mode) {
+    return config_set_input_mode(mode);
+}
+input_mode_t door_get_mode(void) {
+    return config_get_input_mode();
+}
+
+void door_trigger_open(){
+    door_open();
+    door_reset();
+}
+
 void door_reset(void){
-    gpio_set_level(DOOR_GPIO,0);
+    vTaskDelay(OUTPUT_DEBOUNCE);
+    gpio_set_level(GPIO_DOOR_OUTPUT,GPIO_OFF);
 }
 
 void door_open(void) {
-    gpio_set_level(DOOR_GPIO,1);
+    gpio_set_level(GPIO_DOOR_OUTPUT,GPIO_ON);
 }

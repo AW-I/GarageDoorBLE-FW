@@ -68,7 +68,7 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
     case ESP_GAP_BLE_REMOVE_BOND_DEV_COMPLETE_EVT: {
         ESP_LOGD(TAG, "ESP_GAP_BLE_REMOVE_BOND_DEV_COMPLETE_EVT status = %d", param->remove_bond_dev_cmpl.status);
         ESP_LOGD(TAG, "-----ESP_GAP_BLE_REMOVE_BOND_DEV----");
-        ESP_LOG_BUFFER_HEX(TAG, (void *)param->remove_bond_dev_cmpl.bd_addr, sizeof(esp_bd_addr_t));
+        esp_log_buffer_hex(TAG, (void *)param->remove_bond_dev_cmpl.bd_addr, sizeof(esp_bd_addr_t));
         ESP_LOGD(TAG, "------------------------------------");
         break;
     }

@@ -3,8 +3,9 @@
 #include "esp_system.h"
 #include "esp_log.h"
 #include "spi_flash_mmap.h"
-#include "rom/crc.h"
+#include "esp32/rom/crc.h"
 #include "string.h"
+#include "nvs_flash.h"
 
 #include "m_system_api.h"
 #include "m_ble_api.h"
@@ -16,6 +17,7 @@ static const char* TAG = "SYS_API";
 #define FW_SIZE 0xAFFF4
 #define REBOOT_DELAY 100
 #define MAGIC 38269420
+#define MAX_CALLBACK 10
 
 static const char * name = DEFAULT_NAME;
 static const char * pass = DEFAULT_PASS;    
@@ -23,38 +25,15 @@ static const char * pass = DEFAULT_PASS;
 static volatile char * newName = DEFAULT_NAME;
 static volatile char * newPass = DEFAULT_PASS;
 
+//Deinit callback stuff.
+typedef struct restart_callback_list_type {
+    uint32_t listSize;
+    restart_callback_t callbackList[MAX_CALLBACK];
+}restart_callback_list_t;
+
+static restart_callback_list_t restartCallbackList = {0};
+
 uint64_t pwnd = 0;
-
-bool verify_crc(void) {
-    esp_err_t err;
-    uint8_t * dataPtr = NULL;
-    spi_flash_mmap_handle_t handle = 0;
-    //Map the flash
-    err =  spi_flash_mmap(FLASH_ADDRESS_START, FW_SIZE, SPI_FLASH_MMAP_DATA,(const void **) &dataPtr, &handle);
-    if(err != ESP_OK) {
-        ESP_LOGD(TAG, "Failed map memory: %s.",esp_err_to_name(err));
-        goto exit;
-    }
-    //Calculate CRC
-    uint32_t crc = 0;
-    crc = crc32_le(crc, dataPtr, FW_SIZE);
-    crc = crc % MAGIC;
-    //Compare.
-    dataPtr += FW_SIZE;
-    uint32_t expected = (uint32_t)*((uint32_t *)dataPtr);
-    ESP_LOGD(TAG, "CRC: %08x, Exp: %08x,Addr: %08x",(unsigned int)crc,(unsigned int)expected, (unsigned int)dataPtr);
-    if(!memcmp(&expected,&crc,sizeof(uint32_t))) {
-        spi_flash_munmap(handle);
-        return true;
-    }
-    //Don't modify my firmware...
-    exit:
-        ESP_LOGD(TAG, "CRC Failed!");
-        spi_flash_munmap(handle);
-        pwnd = 0xdeadbeef;
-        return false;
-}
-
 bool verify_config(void){
     if(memcmp(name,(uint8_t *)newName,6) || memcmp(pass,(uint8_t *)newPass,4)) {
         ESP_LOGD(TAG, "Failed to verify name or password.");
@@ -95,9 +74,31 @@ bool verify_config(void){
         return false;
 }
 
-void system_reboot(void){
-    door_deinit();
-    ble_deinit();
+void system_register_restart_callback(restart_callback_t func) {
+    if(func == NULL) {
+        ESP_LOGE(TAG, "Could not register callback for restart, was null.");
+        return;
+    }
+    if(restartCallbackList.listSize >= MAX_CALLBACK) {
+        ESP_LOGE(TAG, "Could not register callback for restart, list is full.");
+        return;  
+    }
+    restartCallbackList.callbackList[restartCallbackList.listSize] = func;
+    restartCallbackList.listSize++;
+    ESP_LOGD(TAG, "Registered restart callback.");
+}
+
+void system_restart(void){
+    //Find all the registered callbacks.
+    for(int i = 0; i < restartCallbackList.listSize; i++) {
+        if(i < MAX_CALLBACK && restartCallbackList.callbackList[i] != NULL) {
+            restartCallbackList.callbackList[i]();
+        }
+    }
+    //Deinit core 
+    nvs_flash_deinit();
+
+    //Reboot.
     vTaskDelay(REBOOT_DELAY);
     esp_restart();
     while(1);

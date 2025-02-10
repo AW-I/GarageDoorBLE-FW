@@ -11,10 +11,9 @@
 #include "d_ble_gatt.h"
 #include "d_ble_queue.h"
 
-#define BLE_TIMEOUT 100
+#define BLE_TIMEOUT 1000
 
 static const char* TAG = "BLE_GATT";
-
 static uint16_t conn_id = 0xffff;
 static esp_gatt_if_t gdp_gatts_if = 0xff;
 
@@ -24,6 +23,14 @@ uint32_t connection_time = 0;
 static esp_bd_addr_t remote_bda = {0x0,};
 static uint16_t ble_handle_table[GDP_IDX_NB];
 static uint8_t txBuffer[QUEUE_BUFF_SIZE] = {0};
+
+void gatt_update_door_status(uint8_t status) {
+	if(is_connected) {
+		esp_ble_gatts_send_indicate(gdp_gatts_if, conn_id, ble_handle_table[GDP_IDX_DATA_STATE_VAL], sizeof(uint8_t), &status, false);
+	} else {
+		esp_ble_gatts_set_attr_value(ble_handle_table[GDP_IDX_DATA_STATE_VAL],sizeof(uint8_t),&status);
+	}
+}
 
 static uint8_t find_char_and_desr_index(uint16_t handle){
     uint8_t error = 0xff;
@@ -43,6 +50,8 @@ esp_err_t gatts_close(bool shutdown) {
 	return ESP_OK;
 }
 
+
+
 void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
     esp_ble_gatts_cb_param_t *p_data = (esp_ble_gatts_cb_param_t *) param;
     uint8_t res = 0xff;
@@ -55,6 +64,7 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
 			nameBuffLen = config_get_name(&nameBuff);
 			if(nameBuffLen > 0 && nameBuff != NULL) {
 				esp_ble_gap_set_device_name((char *)nameBuff);
+				ESP_LOGI(TAG, "Device Name: %s",nameBuff);
     		} 
 			esp_ble_gap_config_local_privacy(true);
         	esp_ble_gatts_create_attr_tab(gdp_gatt_db, gatts_if, GDP_IDX_NB, BLE_SVC_INST_ID);

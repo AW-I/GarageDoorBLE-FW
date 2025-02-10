@@ -8,9 +8,9 @@
 #include "m_ble_api.h"
 #include "m_door_api.h"
 
-#define DOOR_DEBOUNCE 100
 #define DISCONNECT_DELAY 100
-#define POLL_PERIOD 25
+#define POLL_PERIOD 20
+#define RX_TIMEOUT 250
 
 #define TASK_NAME "DoorTask"
 #define HEAP_SIZE 2048
@@ -19,8 +19,6 @@
 //Variables
 static const char* TAG = "DOOR_TASK";
 static const char RESP_OK[] = "OK\r\n";
-static const char RESP_OPEN[] = "OPEN\r\n";
-static const char RESP_CLOSED[] = "CLOSED\r\n";
 static const char RESP_ERR[] = "ERROR\r\n";
 static uint8_t rxBuffer[RX_BUFF_SIZE] = {0};
 
@@ -30,8 +28,7 @@ esp_err_t handle_open_door(uint8_t * rxBuffer, uint32_t rxSize);
 esp_err_t handle_ap_name(uint8_t * rxBuffer, uint32_t rxSize);
 esp_err_t handle_ap_pass(uint8_t * rxBuffer, uint32_t rxSize);
 esp_err_t handle_reboot(uint8_t * rxBuffer, uint32_t rxSize);
-esp_err_t handle_get_status(uint8_t * rxBuffer, uint32_t rxSize);
-esp_err_t handle_set_input_state(uint8_t * rxBuffer, uint32_t rxSize);
+esp_err_t handle_set_input_mode(uint8_t * rxBuffer, uint32_t rxSize);
 void handle_door_reset(void);
 
 static const cmd_callback_t cmd_callback_list[] = {
@@ -39,11 +36,11 @@ static const cmd_callback_t cmd_callback_list[] = {
 				.cmdID = CMD_OPEN,
 				.process_func = handle_open_door,
                 .post_func = handle_door_reset
-		},{
+		}, {
 				.cmdID = CMD_OPEN_ALT,
 				.process_func = handle_open_door,
                 .post_func = handle_door_reset
-		},{
+		}, {
 				.cmdID = CMD_AP_NAME,
 				.process_func = handle_ap_name,
                 .post_func = NULL
@@ -51,19 +48,15 @@ static const cmd_callback_t cmd_callback_list[] = {
 				.cmdID = CMD_AP_PASS,
 				.process_func = handle_ap_pass,
                 .post_func = NULL
-		},  {
+		}, {
                 .cmdID = CMD_REBOOT,
 				.process_func = handle_reboot,
                 .post_func = NULL
         },{
-                .cmdID = CMD_GET_INPUT_STATE,
-				.process_func = handle_get_status,
+                .cmdID = CMD_SET_INPUT_MODE,
+				.process_func = handle_set_input_mode,
                 .post_func = NULL
-        } ,{
-                .cmdID = CMD_SET_INPUT_STATE,
-				.process_func = handle_set_input_state,
-                .post_func = NULL
-        },
+        }
 };
 
 void door_task_init(void) {
@@ -73,13 +66,18 @@ void door_task_init(void) {
     xTaskCreate(door_task, TASK_NAME, HEAP_SIZE, NULL, 4 , NULL);
 }
 
+void door_task_deinit(void) {
+    ble_deinit();
+    door_deinit();
+}
+
 void door_task(void * arg){
     uint8_t cmd_quantity = sizeof(cmd_callback_list)/ sizeof(cmd_callback_t);
     for(;;){
         //Receive message from ble
         uint8_t handled = 0;
         memset(rxBuffer,0,sizeof(rxBuffer));
-        uint32_t rxSize = ble_receive(rxBuffer,sizeof(rxBuffer),portMAX_DELAY);
+        uint32_t rxSize = ble_receive(rxBuffer,sizeof(rxBuffer),RX_TIMEOUT);
         if(rxSize > 0 ) {
             //Find the command
             uint8_t key = rxBuffer[0];
@@ -110,7 +108,8 @@ void door_task(void * arg){
                 ble_disconnect();
             }
         }
-        //Sleep
+        //Update state and sleep.
+        ble_update_door_status(door_get_state(),door_get_mode());
         vTaskDelay(POLL_PERIOD);
     }
     vTaskDelete(NULL);
@@ -129,7 +128,6 @@ esp_err_t handle_open_door(uint8_t * rxBuffer, uint32_t rxSize) {
 }
 
 void handle_door_reset(void) {
-    vTaskDelay(DOOR_DEBOUNCE);
     door_reset();
 }
 
@@ -163,27 +161,20 @@ esp_err_t handle_ap_pass(uint8_t * rxBuffer, uint32_t rxSize) {
 
 esp_err_t handle_reboot(uint8_t * rxBuffer, uint32_t rxSize) {
     ESP_LOGI(TAG, "Got reboot command.");
-    system_reboot();
+    system_restart();
     return ESP_OK;
 }
 
-esp_err_t handle_get_status(uint8_t * rxBuffer, uint32_t rxSize) {
-    bool open = false;
-    ESP_LOGI(TAG, "Got status command.");
-    if(open){
-        if(ble_send((uint8_t *)RESP_OPEN,sizeof(RESP_OPEN)) != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to send reply.");
-        }
+esp_err_t handle_set_input_mode(uint8_t * rxBuffer, uint32_t rxSize) {
+    ESP_LOGI(TAG, "Got input mode command.");
+    uint8_t val;
+    if(*rxBuffer == '0') {
+        val = 0;
+    }else if( *rxBuffer == '1') {
+        val = 1;
     } else {
-        if(ble_send((uint8_t *)RESP_CLOSED,sizeof(RESP_CLOSED)) != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to send reply.");
-        }
+        ESP_LOGE(TAG, "Invalid input mode.");
+        return ESP_ERR_INVALID_ARG;
     }
-    return ESP_OK;
-}
-
-esp_err_t handle_set_input_state(uint8_t * rxBuffer, uint32_t rxSize) {
-    ESP_LOGI(TAG, "Got reboot command.");
-    system_reboot();
-    return ESP_OK;
+    return door_set_mode(val);
 }
