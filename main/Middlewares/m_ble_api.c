@@ -76,7 +76,7 @@ esp_err_t ble_set_ap_name(uint8_t * data, uint32_t rxSize) {
         //Set the password.
         uint32_t apLen = strlen((char *)data);
         if(!apLen || apLen > MAX_NAME_LEN) {
-            ESP_LOGE(TAG, "Calculated name size invalid: %d.",apLen);
+            ESP_LOGE(TAG, "Calculated name size invalid: %lu.",apLen);
             return ESP_ERR_INVALID_ARG;
         }
         ret = config_set_name(data,apLen);

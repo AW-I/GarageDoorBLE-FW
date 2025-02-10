@@ -19,6 +19,8 @@
 //Variables
 static const char* TAG = "DOOR_TASK";
 static const char RESP_OK[] = "OK\r\n";
+static const char RESP_OPEN[] = "OPEN\r\n";
+static const char RESP_CLOSED[] = "CLOSED\r\n";
 static const char RESP_ERR[] = "ERROR\r\n";
 static uint8_t rxBuffer[RX_BUFF_SIZE] = {0};
 
@@ -28,6 +30,8 @@ esp_err_t handle_open_door(uint8_t * rxBuffer, uint32_t rxSize);
 esp_err_t handle_ap_name(uint8_t * rxBuffer, uint32_t rxSize);
 esp_err_t handle_ap_pass(uint8_t * rxBuffer, uint32_t rxSize);
 esp_err_t handle_reboot(uint8_t * rxBuffer, uint32_t rxSize);
+esp_err_t handle_get_status(uint8_t * rxBuffer, uint32_t rxSize);
+esp_err_t handle_set_input_state(uint8_t * rxBuffer, uint32_t rxSize);
 void handle_door_reset(void);
 
 static const cmd_callback_t cmd_callback_list[] = {
@@ -35,11 +39,11 @@ static const cmd_callback_t cmd_callback_list[] = {
 				.cmdID = CMD_OPEN,
 				.process_func = handle_open_door,
                 .post_func = handle_door_reset
-		}, {
+		},{
 				.cmdID = CMD_OPEN_ALT,
 				.process_func = handle_open_door,
                 .post_func = handle_door_reset
-		}, {
+		},{
 				.cmdID = CMD_AP_NAME,
 				.process_func = handle_ap_name,
                 .post_func = NULL
@@ -47,11 +51,19 @@ static const cmd_callback_t cmd_callback_list[] = {
 				.cmdID = CMD_AP_PASS,
 				.process_func = handle_ap_pass,
                 .post_func = NULL
-		}, {
+		},  {
                 .cmdID = CMD_REBOOT,
 				.process_func = handle_reboot,
                 .post_func = NULL
-        }
+        },{
+                .cmdID = CMD_GET_INPUT_STATE,
+				.process_func = handle_get_status,
+                .post_func = NULL
+        } ,{
+                .cmdID = CMD_SET_INPUT_STATE,
+				.process_func = handle_set_input_state,
+                .post_func = NULL
+        },
 };
 
 void door_task_init(void) {
@@ -150,6 +162,27 @@ esp_err_t handle_ap_pass(uint8_t * rxBuffer, uint32_t rxSize) {
 }
 
 esp_err_t handle_reboot(uint8_t * rxBuffer, uint32_t rxSize) {
+    ESP_LOGI(TAG, "Got reboot command.");
+    system_reboot();
+    return ESP_OK;
+}
+
+esp_err_t handle_get_status(uint8_t * rxBuffer, uint32_t rxSize) {
+    bool open = false;
+    ESP_LOGI(TAG, "Got status command.");
+    if(open){
+        if(ble_send((uint8_t *)RESP_OPEN,sizeof(RESP_OPEN)) != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to send reply.");
+        }
+    } else {
+        if(ble_send((uint8_t *)RESP_CLOSED,sizeof(RESP_CLOSED)) != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to send reply.");
+        }
+    }
+    return ESP_OK;
+}
+
+esp_err_t handle_set_input_state(uint8_t * rxBuffer, uint32_t rxSize) {
     ESP_LOGI(TAG, "Got reboot command.");
     system_reboot();
     return ESP_OK;

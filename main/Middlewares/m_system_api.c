@@ -2,8 +2,8 @@
 #include "freertos/task.h"
 #include "esp_system.h"
 #include "esp_log.h"
-#include "esp_spi_flash.h"
-#include "esp32/rom/crc.h"
+#include "spi_flash_mmap.h"
+#include "rom/crc.h"
 #include "string.h"
 
 #include "m_system_api.h"
@@ -42,7 +42,7 @@ bool verify_crc(void) {
     //Compare.
     dataPtr += FW_SIZE;
     uint32_t expected = (uint32_t)*((uint32_t *)dataPtr);
-    ESP_LOGD(TAG, "CRC: %08x, Exp: %08x,Addr: %08x",crc,expected, (uint32_t)dataPtr);
+    ESP_LOGD(TAG, "CRC: %08x, Exp: %08x,Addr: %08x",(unsigned int)crc,(unsigned int)expected, (unsigned int)dataPtr);
     if(!memcmp(&expected,&crc,sizeof(uint32_t))) {
         spi_flash_munmap(handle);
         return true;

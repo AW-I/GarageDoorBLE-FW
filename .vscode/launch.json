@@ -8,7 +8,7 @@
       "request": "launch",
       "cwd": "${workspaceFolder}/build",
       "program": "${workspaceFolder}/build/GarageDoorBLE.elf",
-      "miDebuggerPath": "C:/Users/Alex/.espressif/tools/xtensa-esp32-elf/esp-2021r2-patch2-8.4.0/xtensa-esp32-elf/bin/xtensa-esp32-elf-gdb.exe",
+      "miDebuggerPath": "C:/Users/Admin/.espressif/tools/xtensa-esp32-elf/esp-2021r2-patch2-8.4.0/xtensa-esp32-elf/bin/xtensa-esp32-elf-gdb.exe",
       "setupCommands": [
           {
               "description": "Target Address",

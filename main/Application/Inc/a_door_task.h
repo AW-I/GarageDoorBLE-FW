@@ -6,7 +6,9 @@ typedef enum {
     CMD_OPEN_ALT = '0',
     CMD_AP_NAME = 1,
     CMD_AP_PASS = 2,
-    CMD_REBOOT = 3
+    CMD_REBOOT = 3,
+    CMD_GET_INPUT_STATE = 4,
+    CMD_SET_INPUT_STATE = 5,
 } cmd_t;
 
 typedef struct cmd_callback_struct {

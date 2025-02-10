@@ -67,7 +67,7 @@ esp_err_t door_change_pass(uint8_t * pass, uint32_t passLen) {
         //Set the password.
         uint32_t passSize = strlen((char *)pass);
         if(!passSize || passSize > MAX_PASS_LEN) {
-            ESP_LOGE(TAG, "Calculated pass size invalid: %d.",passSize);
+            ESP_LOGE(TAG, "Calculated pass size invalid: %lu.",passSize);
             return ESP_ERR_INVALID_ARG;
         }
         ret = config_set_pass(pass,passSize);

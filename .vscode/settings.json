@@ -56,12 +56,18 @@
     "complex": "c",
     "m_system_api.h": "c",
     "crc.h": "c",
-    "esp_spi_flash.h": "c"
+    "esp_spi_flash.h": "c",
+    "format": "c",
+    "xlocmes": "c",
+    "iosfwd": "c",
+    "xlocbuf": "c",
+    "spi_flash_mmap.h": "c",
+    "cstdlib": "c",
+    "cstdint": "c"
   },
   "idf.adapterTargetName": "esp32",
   "idf.portWin": "COM8",
   "idf.openOcdConfigs": [
-    "interface/ftdi/esp32_devkitj_v1.cfg",
-    "target/esp32.cfg"
+    "board/esp32-wrover-kit-3.3v.cfg"
   ]
 }

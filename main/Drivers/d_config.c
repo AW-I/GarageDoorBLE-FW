@@ -8,6 +8,7 @@ static const char* TAG = "CFG_DRV";
 #define STORAGE_NAMESPACE "config"
 #define PASS_KEY "pass"
 #define NAME_KEY "name"
+#define INPUT_MODE_KEY "input"
 
 static uint8_t passBuff[MAX_PASS_LEN] = DEFAULT_PASS;
 static uint8_t nameBuff[MAX_NAME_LEN] = DEFAULT_NAME;
@@ -55,6 +56,40 @@ esp_err_t config_set_name(uint8_t * name, uint8_t nameLen) {
     }
     err = nvs_set_str(handle,NAME_KEY,(char *)name);
     return err;
+}
+
+esp_err_t config_set_input_mode(input_mode_t mode) {
+    esp_err_t err;
+    nvs_handle_t handle;
+    //Open Handle
+    err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &handle);
+    if (err != ESP_OK){
+        ESP_LOGE(TAG, "Failed to open NVS: %s.",esp_err_to_name(err));
+        return 0;
+    }
+    err = nvs_set_u8(handle,INPUT_MODE_KEY,mode);
+    return err;
+}
+
+input_mode_t config_get_input_mode(void) {
+    esp_err_t err;
+    nvs_handle_t handle;
+    uint8_t output = 0;
+
+    //Open handle
+    err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &handle);
+    if (err != ESP_OK){
+        ESP_LOGE(TAG, "Failed to open NVS: %s.",esp_err_to_name(err));
+        return 0;
+    }
+    //Read password
+    err = nvs_get_u8(handle,INPUT_MODE_KEY,&output);
+    if(err != ESP_OK){
+        ESP_LOGE(TAG, "Failed to read password(%s), using %s.",esp_err_to_name(err),DEFAULT_PASS);
+    }
+    //Return value.
+    if(output) return SWITCH_NORMALLY_OPEN;
+    else return SWITCH_NORMALLY_CLOSED;
 }
 
 uint8_t config_get_pass(uint8_t ** pass) {
