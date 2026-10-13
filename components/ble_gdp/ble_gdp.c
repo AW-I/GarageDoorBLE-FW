@@ -300,6 +300,15 @@ static void host_task(void *param) {
 	nimble_port_freertos_deinit();
 }
 
+/* V1 (Bluedroid) notified whether or not the phone wrote the CCCD, and the V1 app relies on
+ * that - so notify the connected peer directly instead of only subscribed clients. */
+static void push_state(uint16_t handle) {
+	uint16_t conn = s_conn_handle;
+	if (conn != BLE_HS_CONN_HANDLE_NONE && handle != 0) {
+		ble_gatts_notify(conn, handle);
+	}
+}
+
 /* ---------- Public API ---------- */
 
 esp_err_t ble_gdp_init(const ble_gdp_config_t *cfg) {
@@ -387,8 +396,8 @@ void ble_gdp_set_state(uint8_t state) {
 	changed = s_state != state;
 	s_state = state;
 	taskEXIT_CRITICAL(&s_state_mux);
-	if (changed && s_state_handle) {
-		ble_gatts_chr_updated(s_state_handle);
+	if (changed) {
+		push_state(s_state_handle);
 	}
 }
 
@@ -398,9 +407,14 @@ void ble_gdp_set_ext_state(const uint8_t state[BLE_GDP_EXT_STATE_LEN]) {
 	changed = memcmp(s_ext_state, state, BLE_GDP_EXT_STATE_LEN) != 0;
 	memcpy(s_ext_state, state, BLE_GDP_EXT_STATE_LEN);
 	taskEXIT_CRITICAL(&s_state_mux);
-	if (changed && s_ext_state_handle) {
-		ble_gatts_chr_updated(s_ext_state_handle);
+	if (changed) {
+		push_state(s_ext_state_handle);
 	}
+}
+
+void ble_gdp_resend_state(void) {
+	push_state(s_state_handle);
+	push_state(s_ext_state_handle);
 }
 
 esp_err_t ble_gdp_set_name(const char *name) {

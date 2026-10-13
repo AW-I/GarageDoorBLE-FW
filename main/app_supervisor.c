@@ -56,6 +56,10 @@ static void supervisor_task(void *arg) {
 			restart_now();
 		}
 
+		if (ble_gdp_is_connected()) {
+			ble_gdp_resend_state();
+		}
+
 		if (++ticks % RSSI_PERIOD_S == 0) {
 			ha_mqtt_publish_rssi(net_wifi_rssi());
 		}

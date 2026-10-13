@@ -9,6 +9,7 @@
  *  Service  71 3D 00 00 50 3E 4C 75 BA 94 31 48 F1 8D 94 1E
  *  ..0003   Data receive : write / write-no-rsp (command), read (last response)
  *  ..0002   State        : read / notify, 1 byte  (closed | input_mode << 1)
+ *  Notifications reach the connected peer even without a CCCD write (V1 behaviour).
  *  ..0004   Ext. state   : read / notify, BLE_GDP_EXT_STATE_LEN bytes (new in V3)
  */
 
@@ -44,6 +45,9 @@ void ble_gdp_set_state(uint8_t state);
 
 /** @brief Update the extended state characteristic (notifies on change). */
 void ble_gdp_set_ext_state(const uint8_t state[BLE_GDP_EXT_STATE_LEN]);
+
+/** @brief Re-send both state notifications (V1 sent them every 200 ms). */
+void ble_gdp_resend_state(void);
 
 /** @brief Change the advertised name (re-advertises if idle). */
 esp_err_t ble_gdp_set_name(const char *name);
