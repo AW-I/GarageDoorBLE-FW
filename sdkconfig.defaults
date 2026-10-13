@@ -7,6 +7,14 @@ CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 # A new image that is never confirmed (BLE AUTH or stable uptime) is rolled back on next boot
 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+
+# Signed firmware: images are signed with secure_boot_signing_key.pem (RSA-3072, not in git) at
+# build time, and BLE updates are rejected unless signed with the same key. No eFuses are burned.
+CONFIG_SECURE_SIGNED_APPS_NO_SECURE_BOOT=y
+CONFIG_SECURE_SIGNED_APPS_RSA_SCHEME=y
+CONFIG_SECURE_SIGNED_ON_UPDATE_NO_SECURE_BOOT=y
+CONFIG_SECURE_BOOT_BUILD_SIGNED_BINARIES=y
+CONFIG_SECURE_BOOT_SIGNING_KEY="secure_boot_signing_key.pem"
 CONFIG_COMPILER_OPTIMIZATION_SIZE=y
 
 # Bluetooth: NimBLE host only (no Bluedroid)

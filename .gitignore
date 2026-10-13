@@ -2,3 +2,7 @@ build/
 managed_components/
 sdkconfig
 sdkconfig.old
+
+# Firmware signing key - never commit. Back it up somewhere safe: controllers only accept
+# BLE updates signed with the key their running firmware was built with.
+*.pem

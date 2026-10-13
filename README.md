@@ -1,13 +1,14 @@
-# Garage Door Controller
+# GarageDoorBLE: Forcedoor Garage Door Controller
 
-ESP32-C3 firmware that replaces the Forcedoor Wi-Fi dongle. It talks to the motor unit over its
-UART port and can be controlled two ways:
+ESP32-C3 firmware that replaces the Forcedoor Wi-Fi dongle. It plugs into the motor unit's
+accessory port and lets you control the door two ways:
 
-- **Bluetooth (NimBLE):** the phone app. Works with no network at all. It is also how you set up
-  Wi-Fi, MQTT, the device name and the door password.
-- **Home Assistant over Wi-Fi:** MQTT with auto-discovery.
+- **Bluetooth, from the phone app.** Works with no network at all. The app is also how you set up
+  Wi-Fi, Home Assistant, the device name and the door password.
+- **Home Assistant over Wi-Fi.** MQTT with auto-discovery: the door shows up as a garage cover with
+  live position, plus the motor light and a few sensors.
 
-Phone control is password protected; Home Assistant control is protected by the MQTT broker login.
+Phone control is protected by a door password, and Home Assistant control by the MQTT broker login.
 
 ```
 Phone app ──BLE──> ble_gdp ──> app_ble_cmd ─┐
@@ -16,63 +17,226 @@ Home Assistant ──MQTT──> ha_mqtt ──────────┘      
                                                     └──> state ──> BLE notify + MQTT publish
 ```
 
-## Layout
+## Features
+
+- Open, close, stop, toggle (wall-button behaviour) and motor light on/off
+- Live door position (%) and movement state, pushed to the app and to Home Assistant
+- Works offline over BLE. Wi-Fi and Home Assistant are optional
+- Firmware updates from the phone app over BLE, with automatic rollback if a new image fails
+- Status LED for Wi-Fi and Home Assistant connection state
+
+## Hardware
+
+| Part | Notes |
+|---|---|
+| **ESP32-C3 SuperMini** | Any ESP32-C3 board works; the defaults match the SuperMini |
+| 24 V → 5 V buck converter | Powers the board from the motor's 24 V supply |
+| 5 kΩ and 10 kΩ resistors | Only for motors with 5 V logic: divider that brings the motor's TX down to 3.3 V |
+| USB-A plug or cable | Plugs into the motor's accessory socket |
+
+### Wiring
+
+The motor's USB-A socket is **not USB**. It carries 24 V and a 5 V UART:
+
+| Motor USB-A pin | Signal | Connect to |
+|---|---|---|
+| VBUS | **24 V** | Buck converter in → 5 V out to the SuperMini **5V** pin |
+| D- | Motor TX (5 V or 3.3 V, see below) | **GPIO0** (ESP RX), through a 5k/10k divider if it is 5 V |
+| D+ | Motor RX | **GPIO1** (ESP TX) |
+| GND | Ground | **GND** |
+
+> [!IMPORTANT]
+> **Measure the data lines before connecting.** Steel-Line motors come with either **5 V** or
+> **3.3 V** logic on D-/D+, and it isn't marked. With the motor powered, measure D- to GND with a
+> multimeter. The line idles high, so it reads close to its logic level.
+>
+> - **About 5 V:** use the 5k/10k divider on D- (below). The ESP32-C3 is not 5 V tolerant, so
+>   5 V straight into GPIO0 can damage it.
+> - **About 3.3 V:** connect D- straight to GPIO0 and leave the divider out. With the divider, the
+>   signal drops to about 2.2 V and may not be read reliably.
+>
+> D+ connects straight to GPIO1 either way, because the ESP drives it at 3.3 V.
+
+5 V motor:
+```
+                    ESP32-C3 SuperMini
+motor D- ──[5k]──┬──── GPIO0  (RX)
+                 │
+               [10k]
+                 │
+motor GND ───────┴──── GND
+motor D+ ───────────── GPIO1  (TX)
+motor 24V ── buck ──── 5V
+```
+
+3.3 V motor:
+```
+                    ESP32-C3 SuperMini
+motor D- ───────────── GPIO0  (RX)
+motor D+ ───────────── GPIO1  (TX)
+motor GND ──────────── GND
+motor 24V ── buck ──── 5V
+```
+
+> [!WARNING]
+> VBUS is **24 V**. Measure it before connecting anything, and never wire it straight to the
+> board.
+
+UART is 115200 8N1. The pins can be changed in `idf.py menuconfig` → *Garage Door Controller →
+Motor UART*. GPIO0 and GPIO1 are free pins on the SuperMini. If you move them, avoid strapping pins
+2/8/9 and the USB pins 18/19.
+
+Some SuperMini boards have a poorly matched antenna and can't join Wi-Fi at full power. If the
+access point stops answering during authentication three times in a row, the controller retries at
+8.5 dBm. The log shows `retrying at reduced TX power`.
+
+### Status LED
+
+The SuperMini's onboard blue LED (GPIO8, active low):
+
+| LED | Meaning |
+|---|---|
+| Off | No Wi-Fi configured |
+| Blinking (2 Hz) | Searching for or reconnecting to Wi-Fi |
+| Double blink (every 1.2 s) | Wi-Fi connected, MQTT broker configured but not connected |
+| Solid | Connected to Wi-Fi, and to the broker if one is configured |
+| Short flash (inverted) | A command was sent to the motor |
+
+## Build and flash
+
+Requires [ESP-IDF v6.1](https://docs.espressif.com/projects/esp-idf/en/latest/esp32c3/get-started/).
+
+Firmware images are signed (see [Signed firmware](#signed-firmware)), so generate your own signing
+key before the first build:
+
+```bash
+idf.py secure-generate-signing-key --version 2 --scheme rsa3072 secure_boot_signing_key.pem
+```
+```bash
+idf.py set-target esp32c3
+```
+```bash
+idf.py build flash monitor
+```
+
+`espressif/mqtt` is downloaded from the component registry on the first build. Plug the SuperMini
+in over USB-C to flash it. If it isn't detected, hold BOOT while plugging it in.
+
+The first USB flash writes the bootloader and the OTA partition table. After that, updates can go
+over BLE from the app (see [Firmware updates](#firmware-updates-over-ble)).
+
+## First-time setup
+
+1. Power the controller and open the phone app. It finds the controller as **BLEDoor**.
+2. The default door password is `default`. Change it in the app under Settings → Password.
+3. Optional: enter Wi-Fi and Home Assistant (MQTT) details in Settings and save.
+
+The defaults can be changed in `menuconfig` → *Garage Door Controller → Defaults*.
+
+## Home Assistant
+
+1. Install the Mosquitto broker add-on and the MQTT integration, and create an HA user for the
+   controller.
+2. In the app, enter the broker as `mqtt://<home-assistant-ip>:1883` with that user and password,
+   then save.
+3. The controller appears under **Settings → Devices & services → MQTT** with its device name.
+
+| Entity | Type |
+|---|---|
+| Garage door (open / close / stop, position) | Cover |
+| LED (motor light) | Light |
+| Restart | Button |
+| Position, Operation, Wi-Fi signal | Sensors |
+
+Availability uses a last-will message on `garage_door/<node_id>/status`. The node id is `gdc_`
+followed by the last 3 bytes of the MAC. Topics are
+`garage_door/<node_id>/door/set|state|position|operation`, `led/set|state`, `restart/press` and
+`rssi`.
+
+## Firmware updates over BLE
+
+The phone app carries a copy of the firmware and updates the controller over Bluetooth. No server
+is involved.
+
+The flash has two 1.875 MB app slots (`partitions.csv`). The new firmware is written to the slot
+that isn't running. After a restart it runs in trial mode, and the bootloader keeps it once either:
+
+- a phone logs in over BLE (the app does this straight after the update), or
+- it has run for `GDC_OTA_CONFIRM_AFTER_S` (default 10 minutes).
+
+If it crashes or resets before then, the bootloader goes back to the previous firmware. Before
+switching, `esp_ota_end` checks the image's signature, SHA-256 and chip type, and the controller
+refuses images built from a different project.
+
+### Signed firmware
+
+Every build is signed with `secure_boot_signing_key.pem` (RSA-3072), and a BLE update is rejected
+unless it is signed with the same key as the firmware already running. Someone who knows the door
+password still can't install their own firmware over Bluetooth.
+
+- **The key is not in git** (`*.pem` is ignored). Generate your own with the command under
+  [Build and flash](#build-and-flash).
+- **Back the key up.** A controller only accepts updates signed with the key its current firmware
+  was built with. If you lose the key, every controller needs a USB flash to take a new one.
+- **Never publish the key.** Anyone with it can sign firmware your controllers will accept.
+- **The first signed image installs over BLE.** Firmware built before signing was enabled doesn't
+  check signatures, so it accepts the first signed update. From then on only signed images are
+  accepted.
+- **USB flashing still works** with any image. This uses `CONFIG_SECURE_SIGNED_APPS_NO_SECURE_BOOT`,
+  which protects remote (Bluetooth) updates without burning eFuses. Hardware Secure Boot, which also
+  locks down USB flashing, is a separate and **irreversible** step that this project doesn't
+  enable.
+
+Check a build's signature with:
+
+```bash
+python -m espsecure verify-signature --version 2 --keyfile secure_boot_signing_key.pem build/GarageDoorBLE.bin
+```
+
+**Releasing an update:**
+
+1. Bump `VERSION` in `main/version.h` and run `idf.py build`. CMake embeds the version in the
+   image, where the app reads it.
+2. In the app project, run `gradlew copyFirmware`. This copies `build/GarageDoorBLE.bin` into the
+   app's assets.
+3. Build the app. Settings → Firmware offers the update when the bundled version is newer than the
+   controller's.
+
+**Upgrading from 1.0.0:** 1.0.0 used a single-app partition table, so flash 1.1.0 or later over USB
+once. Settings and paired phones are kept because the `nvs` partition did not move.
+
+## Configuration
+
+`idf.py menuconfig` → *Garage Door Controller*:
+
+| Menu | Options |
+|---|---|
+| Motor UART | UART port, TX/RX GPIO (default 1/0), baud, command gap, retries, echo timeout |
+| Status LED | GPIO (default 8, -1 for none), active low |
+| Defaults | BLE device name (`BLEDoor`), door password (`default`) |
+| Home Assistant | Discovery prefix (`homeassistant`), base topic (`garage_door`) |
+| Supervisor | Idle BLE disconnect (300 s), periodic reboot (24 h), OTA confirm time (600 s) |
+
+## Project layout
 
 | Module | Path | Role |
 |---|---|---|
 | `settings` | `components/settings` | NVS-backed config (name, door password, Wi-Fi, MQTT). Constant-time password check. |
 | `motor` | `components/motor` | Forcedoor UART protocol (`motor_proto.c`, pure codec) and the UART driver task (`motor.c`). |
-| `ble_gdp` | `components/ble_gdp` | NimBLE GATT server and advertising. It only handles transport. |
+| `ble_gdp` | `components/ble_gdp` | NimBLE GATT server and advertising. Transport only. |
 | `net_wifi` | `components/net_wifi` | Wi-Fi station with exponential back-off reconnect. |
 | `ha_mqtt` | `components/ha_mqtt` | MQTT client, Home Assistant discovery, LWT availability, commands. |
-| app | `main/` | `app_door` (actions and state fan-out), `app_ble_cmd` (BLE command protocol), `app_net` (applies settings), `app_ota` (firmware update over BLE), `app_supervisor` (watchdog, idle disconnect, periodic reboot). |
+| `status_led` | `components/status_led` | Blink patterns for a plain LED. |
+| app | `main/` | `app_door` (actions and state fan-out), `app_ble_cmd` (BLE command protocol), `app_net` (applies settings), `app_ota` (BLE firmware update), `app_supervisor` (watchdog, idle disconnect, periodic reboot). |
 
-The components don't depend on each other. Only `main/` wires them together, and pins and timings
-are set in `main/Kconfig.projbuild` (`idf.py menuconfig` → *Garage Door Controller*).
+The components don't depend on each other; only `main/` wires them together.
 
-## Hardware
+## Protocol reference
 
-Wiring follows the garage-esp32 (ESPHome) reference. The Forcedoor motor's USB-A socket is **not USB**:
+### Motor UART
 
-| Motor USB pin | Signal | Connect to |
-|---|---|---|
-| VBUS | **24 V** | 24 V→5 V buck → board 5V |
-| D- | motor TX (5 V TTL) | 5k/10k divider → `GDC_MOTOR_RX_GPIO` (default **GPIO4**) |
-| D+ | motor RX | `GDC_MOTOR_TX_GPIO` (default **GPIO5**) |
-| GND | GND | GND |
-
-```
-motor D- ---[5k]---+--- GPIO4
-                   |
-                 [10k]
-                   |
-                  GND
-```
-
-Measure 24 V before connecting anything. Avoid C3 strapping pins 2/8/9 and USB pins 18/19.
-UART: 115200 8N1.
-
-Wi-Fi: if the AP stops answering during authentication (3 failures in a row), the controller
-switches to 8.5 dBm TX power and back. Many ESP32-C3 SuperMini boards have a poorly matched
-antenna and cannot join at full power. The log shows `retrying at reduced TX power`, and
-`Connected ... (reduced TX power)` when that was what fixed it.
-
-### Status LED
-
-Plain LED on GPIO8 (menuconfig *Garage Door Controller → Status LED*, active-low by default):
-
-| LED | Meaning |
-|---|---|
-| Off | No Wi-Fi configured |
-| Blinking (2 Hz) | Searching for / reconnecting to Wi-Fi |
-| Double blink (every 1.2 s) | Wi-Fi connected, MQTT broker configured but not connected |
-| Solid | Connected to Wi-Fi (and to the broker, if one is configured) |
-| Short flash (inverted) | A command was sent to the motor (open, close, stop, light) |
-
-### Motor protocol
-
-`[hdr][len][payload][sum][0x0D]`, where `len` is the whole frame length and `sum` is the sum of
-all preceding bytes & 0xFF.
+Frames are `[hdr][len][payload][sum][0x0D]`, where `len` is the whole frame length and `sum` is the
+sum of all preceding bytes & 0xFF.
 
 | Command | Frame |
 |---|---|
@@ -81,59 +245,21 @@ all preceding bytes & 0xFF.
 | Close | `23 07 41 02 00 6D 0D` |
 | LED on / off | `23 07 41 F0 00 5B 0D` / `23 07 41 F1 00 5C 0D` |
 
-Status frames are 17 bytes long: `40 11 49 <op> <led> … <pos%> … <sum> 0D`. `op` is 0 opening,
+Status frames are 17 bytes: `40 11 49 <op> <led> … <pos%> … <sum> 0D`. `op` is 0 opening,
 1 stopped, 2 closing. `led` is F0 on, F1 off. The motor echoes each accepted command as a
 `40 07 41 <cmd> …` frame.
 
-## Build / flash
+### BLE (phone app)
 
-ESP-IDF v6.1, target `esp32c3`:
-
-```bash
-idf.py set-target esp32c3
-```
-```bash
-idf.py build flash monitor
-```
-
-`espressif/mqtt` is pulled from the component registry on the first build.
-
-The version is set in `main/version.h`. CMake copies it into the image (`esp_app_desc_t`), where
-the phone app reads it from its bundled copy.
-
-### Firmware updates over BLE
-
-Flash layout (`partitions.csv`): two 1.875 MB OTA slots, plus `nvs` at the same offset and size as
-the old single-app table.
-
-**Migrating a controller from 1.0.0:** it has no OTA slots, so flash it over USB once with
-`idf.py flash`. Settings and bonded phones are kept because `nvs` did not move. After that, every
-update can go over BLE.
-
-**Releasing an update through the app:**
-1. Bump `VERSION` in `main/version.h` and run `idf.py build`.
-2. In GarageDoorBLE-App, run `gradlew copyFirmware`. This copies `build/GarageDoorBLE.bin` to
-   `app/src/main/assets/firmware/`.
-3. Build and ship the app. Settings → Firmware offers the update when the bundled version is newer
-   than the controller's.
-
-**Rollback:** the bootloader starts a new image in trial mode. It keeps the image after the first
-successful BLE AUTH, or after `GDC_OTA_CONFIRM_AFTER_S` (default 10 min) of uptime. If the image
-crashes or resets before either of those, the bootloader switches back to the previous firmware.
-`esp_ota_end` checks the SHA-256 appended to the image and the chip. The image must also have the
-same project name (`GarageDoorBLE`) as the running firmware.
-
-## Phone app: BLE protocol
-
-The device advertises the GDP service UUID with its name (default `BLEDoor`) in the scan response.
-Pairing (bonding, LE Secure Connections, Just Works) is started by the phone.
+The controller advertises the service UUID, with its name in the scan response. The phone starts
+pairing (bonding, LE Secure Connections, Just Works).
 
 | Characteristic | Props | Content |
 |---|---|---|
 | Service `713D0000-503E-4C75-BA94-3148F18D941E` | | |
-| Command `713D0003-…` | write, write-no-rsp, read | write `[cmd][payload]`, then read `[status][data]` |
+| Command `713D0003-…` | write, write-no-rsp, read | Write `[cmd][payload]`, then read `[status][data]` |
 | State `713D0002-…` | read, notify | 4 bytes: position % (FF unknown), op (0 opening / 1 stopped / 2 closing / FF), LED (1/0/FF), flags (bit0 Wi-Fi configured, bit1 Wi-Fi up, bit2 MQTT up) |
-| Data `713D0004-…` | write, write-no-rsp | Firmware image chunks: `<offset u32 LE><bytes>`, only during an OTA |
+| Data `713D0004-…` | write, write-no-rsp | Firmware image chunks `<offset u32 LE><bytes>`, only during an update |
 
 Every command except AUTH needs a successful AUTH on the current connection.
 
@@ -141,27 +267,26 @@ Every command except AUTH needs a successful AUTH on the current connection.
 |---|---|---|
 | `0x01` AUTH | password | Unlocks the other commands until disconnect |
 | `0x02` DOOR | 1 byte action | 0 open, 1 stop, 2 close, 4 LED on, 5 LED off, 6 toggle (stop if moving, else open/close) |
-| `0x03` SET | key, flags, value bytes | flags bit0 = first chunk, bit1 = last chunk; `0x03` for a single write. Chunk values longer than MTU−6. |
-| `0x04` GET | key | data: value. Secrets come back as `********` when set. |
-| `0x05` APPLY | – | Reconnect Wi-Fi and MQTT using the saved settings |
-| `0x06` INFO | – | data: `fw=..;name=..;wifi=connected;ssid=..;ip=..;rssi=..;mqtt=1;pos=..;op=..;led=..` |
+| `0x03` SET | key, flags, value | flags bit0 = first chunk, bit1 = last chunk (`0x03` for a single write) |
+| `0x04` GET | key | data: value. Secrets come back as `********` when set |
+| `0x05` APPLY | – | Reconnect Wi-Fi and MQTT with the saved settings |
+| `0x06` INFO | – | data: `fw=..;name=..;wifi=..;ssid=..;ip=..;rssi=..;mqtt=..;pos=..;op=..;led=..` |
 | `0x07` REBOOT | – | Restart the controller |
-| `0x08` FACTORY RESET | – | Erase settings and bonded phones, reboot |
-| `0x09` OTA_BEGIN | size u32 LE | Open the inactive OTA slot. `0x02` if the image does not fit |
+| `0x08` FACTORY RESET | – | Erase settings and paired phones, then reboot |
+| `0x09` OTA_BEGIN | size u32 LE | Open the inactive slot. `0x02` if the image doesn't fit |
 | `0x0A` OTA_STATUS | – | data: next expected offset (u32 LE). `0x03` once a flash write failed |
-| `0x0B` OTA_END | – | Verify the image, select it for boot, then reboot |
-| `0x0C` OTA_ABORT | – | Drop the update. Disconnecting does the same |
+| `0x0B` OTA_END | – | Verify the image, select it for boot, reboot |
+| `0x0C` OTA_ABORT | – | Drop the update (disconnecting does the same) |
 
-Reply status byte: `0x00` OK, `0x01` auth (wrong password / not authenticated), `0x02` invalid
-payload, `0x03` failed, `0x04` unknown command. **A wrong password drops the link after 1 s.**
+Reply status: `0x00` OK, `0x01` auth (wrong password or not logged in), `0x02` invalid payload,
+`0x03` failed, `0x04` unknown command. **A wrong password drops the link after 1 s.**
 
-Keys: 1 Wi-Fi SSID, 2 Wi-Fi password (empty or 8–64), 3 MQTT URI (`mqtt://192.168.1.10:1883`,
-`mqtts://…`), 4 MQTT user, 5 MQTT password, 6 device name (≤20), 7 door password (≤20).
+Setting keys: 1 Wi-Fi SSID, 2 Wi-Fi password (empty or 8–64), 3 MQTT URI (`mqtt://…` or
+`mqtts://…`), 4 MQTT user, 5 MQTT password, 6 device name (≤ 20), 7 door password (≤ 20).
 
-OTA transfer: after OTA_BEGIN, the phone sends a window of chunks (32 × MTU−7 bytes) as
-write-without-response on the data characteristic, then asks OTA_STATUS. The controller drops any
-chunk whose offset is not the next expected byte, so the phone resends from the offset that
-OTA_STATUS returns. When the offset reaches the image size, the phone sends OTA_END.
+During an update the phone sends windows of 32 chunks as write-without-response on the data
+characteristic, then asks OTA_STATUS. The controller drops any chunk whose offset isn't the next
+expected byte, and the phone resends from the offset OTA_STATUS returns.
 
 Example provisioning sequence:
 ```
@@ -172,20 +297,5 @@ Example provisioning sequence:
 03 04 03 "garage"              MQTT user
 03 05 03 "secret"              MQTT password
 05                             APPLY
-06                             INFO -> check wifi=connected;mqtt=1
+06                             INFO -> check wifi=Connected;mqtt=1
 ```
-
-## Home Assistant
-
-1. Install the Mosquitto broker add-on and the MQTT integration. Create an HA user for the device.
-2. Provision the URI, user and password over BLE, then send APPLY.
-3. The device appears under **MQTT → Devices** with the device name.
-
-Entities: **Cover** (garage: open/close/stop with position), **LED** light,
-**Restart** button, **Position** sensor, **Operation** sensor, **Wi-Fi signal** sensor.
-Availability uses an LWT on `garage_door/<node_id>/status`.
-
-The node id is `gdc_` plus the last 3 bytes of the MAC.
-
-Topics are `garage_door/<node_id>/door/set|state|position|operation`, `led/set|state`,
-`restart/press` and `rssi`.

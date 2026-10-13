@@ -10,11 +10,11 @@ menu "Garage Door Controller"
 
         config GDC_MOTOR_TX_GPIO
             int "TX GPIO (to motor D+)"
-            default 5
+            default 1
 
         config GDC_MOTOR_RX_GPIO
-            int "RX GPIO (from motor D-, via 5k/10k divider)"
-            default 4
+            int "RX GPIO (from motor D-, via 5k/10k divider on 5 V motors)"
+            default 0
 
         config GDC_MOTOR_BAUD
             int "Baud rate"
