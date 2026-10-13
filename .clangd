@@ -1,0 +1,6 @@
+CompileFlags:
+  CompilationDatabase: C:\Users\Alex\OneDrive\ESP32\GarageDoorBLE-V3\build
+  Remove: [-m*, -f*]
+  Add: [--target=riscv32-esp-elf, -isystem, 'C:/Espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/picolibc/include',
+    -isystem, 'C:/Espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/lib/gcc/riscv32-esp-elf/15.2.0/include',
+    -isystem, 'C:/Espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/lib/gcc/riscv32-esp-elf/15.2.0/include-fixed']

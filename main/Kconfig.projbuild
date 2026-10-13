@@ -1,0 +1,77 @@
+menu "Garage Door Controller"
+
+    menu "Motor UART"
+        config GDC_MOTOR_UART_PORT
+            int "UART port"
+            range 0 2
+            default 1
+            help
+                UART peripheral wired to the motor unit. UART0 is the console on most boards.
+
+        config GDC_MOTOR_TX_GPIO
+            int "TX GPIO (to motor D+)"
+            default 5
+
+        config GDC_MOTOR_RX_GPIO
+            int "RX GPIO (from motor D-, via 5k/10k divider)"
+            default 4
+
+        config GDC_MOTOR_BAUD
+            int "Baud rate"
+            default 115200
+
+        config GDC_MOTOR_TX_GAP_MS
+            int "Minimum gap between commands (ms)"
+            default 100
+
+        config GDC_MOTOR_TX_RETRIES
+            int "Resend count when the motor does not echo a command"
+            range 0 5
+            default 0
+            help
+                The motor echoes every command it accepts. With a value above 0 the command is
+                resent if no echo arrives within the echo timeout. 0 matches the ESPHome reference
+                (send once).
+
+        config GDC_MOTOR_ECHO_TIMEOUT_MS
+            int "Echo timeout (ms)"
+            default 500
+    endmenu
+
+    menu "Defaults"
+        config GDC_DEFAULT_DEVICE_NAME
+            string "Default BLE device name"
+            default "BLEDoor"
+
+        config GDC_DEFAULT_PASSWORD
+            string "Default door password"
+            default "default"
+            help
+                Used until a password is set from the app. Change it after first install.
+    endmenu
+
+    menu "Home Assistant (MQTT)"
+        config GDC_HA_DISCOVERY_PREFIX
+            string "Discovery prefix"
+            default "homeassistant"
+
+        config GDC_HA_BASE_TOPIC
+            string "Base topic"
+            default "garage_door"
+            help
+                State/command topics are <base>/<node_id>/...
+    endmenu
+
+    menu "Supervisor"
+        config GDC_BLE_IDLE_TIMEOUT_S
+            int "Disconnect idle BLE client after (s)"
+            default 300
+
+        config GDC_PERIODIC_REBOOT_H
+            int "Periodic reboot interval (hours, 0 = never)"
+            default 24
+            help
+                Reboot only happens while no phone is connected and the door is not moving.
+    endmenu
+
+endmenu

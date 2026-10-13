@@ -1,9 +1,0 @@
-{
-    "files.associations": {
-        "d_config.h": "c",
-        "d_ble_const.h": "c",
-        "d_ble_gatt.h": "c"
-    },
-    "idf.portWin": "COM9",
-    "idf.flashType": "UART"
-}
