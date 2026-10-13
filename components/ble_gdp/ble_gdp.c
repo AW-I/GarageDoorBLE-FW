@@ -21,22 +21,18 @@ static const char *TAG = "BLE_GDP";
 
 #define RX_QUEUE_LEN 4
 #define RESP_WAIT_MS 2000
-#define ADV_INTERVAL 0x40 /* 40 ms, same as V1 */
+#define ADV_INTERVAL 0x40 /* 40 ms */
 #define APPEARANCE_GENERIC_REMOTE 0x0180
 
 void ble_store_config_init(void);
 
-/* Bluedroid stored 128-bit UUIDs LSB first - BLE_UUID128_INIT uses the same order. */
+/* 713D00xx-503E-4C75-BA94-3148F18D941E, bytes LSB first as BLE_UUID128_INIT expects. */
 #define GDP_UUID(b12) \
 	BLE_UUID128_INIT(0x1E, 0x94, 0x8D, 0xF1, 0x48, 0x31, 0x94, 0xBA, 0x75, 0x4C, 0x3E, 0x50, b12, 0x00, 0x3D, 0x71)
 
 static const ble_uuid128_t s_svc_uuid = GDP_UUID(0x00);
 static const ble_uuid128_t s_state_uuid = GDP_UUID(0x02);
-static const ble_uuid128_t s_rx_uuid = GDP_UUID(0x03);
-static const ble_uuid128_t s_ext_state_uuid = GDP_UUID(0x04);
-
-/* Service data carried in both adv and scan response by V1 ("AW" uuid16 + 'I'). */
-static const uint8_t s_svc_data[] = {'A', 'W', 'I'};
+static const ble_uuid128_t s_cmd_uuid = GDP_UUID(0x03);
 
 typedef struct {
 	uint16_t len;
@@ -51,7 +47,7 @@ static volatile bool s_synced;
 static volatile uint16_t s_conn_handle = BLE_HS_CONN_HANDLE_NONE;
 static volatile int64_t s_last_activity_us;
 
-static uint16_t s_rx_handle, s_state_handle, s_ext_state_handle;
+static uint16_t s_cmd_handle, s_state_handle;
 static QueueHandle_t s_rx_queue;
 
 static SemaphoreHandle_t s_resp_lock;
@@ -61,14 +57,13 @@ static uint8_t s_resp[BLE_GDP_RESP_MAX];
 static size_t s_resp_len;
 
 static portMUX_TYPE s_state_mux = portMUX_INITIALIZER_UNLOCKED;
-static uint8_t s_state;
-static uint8_t s_ext_state[BLE_GDP_EXT_STATE_LEN] = {0xFF, 0xFF, 0xFF, 0x00};
+static uint8_t s_state[BLE_GDP_STATE_LEN] = {0xFF, 0xFF, 0xFF, 0x00};
 
 static int gap_event(struct ble_gap_event *event, void *arg);
 
 /* ---------- GATT ---------- */
 
-static int rx_access(uint16_t conn_handle, struct ble_gatt_access_ctxt *ctxt) {
+static int cmd_access(struct ble_gatt_access_ctxt *ctxt) {
 	if (ctxt->op == BLE_GATT_ACCESS_OP_WRITE_CHR) {
 		static rx_msg_t msg; /* Host task only - keep it off the stack. */
 		uint16_t len = 0;
@@ -114,24 +109,17 @@ static int rx_access(uint16_t conn_handle, struct ble_gatt_access_ctxt *ctxt) {
 
 static int chr_access(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt,
 					  void *arg) {
-	if (attr_handle == s_rx_handle) {
-		return rx_access(conn_handle, ctxt);
+	if (attr_handle == s_cmd_handle) {
+		return cmd_access(ctxt);
 	}
 	if (ctxt->op != BLE_GATT_ACCESS_OP_READ_CHR) {
 		return BLE_ATT_ERR_UNLIKELY;
 	}
-	uint8_t buf[BLE_GDP_EXT_STATE_LEN];
-	size_t len;
+	uint8_t buf[BLE_GDP_STATE_LEN];
 	taskENTER_CRITICAL(&s_state_mux);
-	if (attr_handle == s_state_handle) {
-		buf[0] = s_state;
-		len = 1;
-	} else {
-		memcpy(buf, s_ext_state, sizeof(buf));
-		len = sizeof(buf);
-	}
+	memcpy(buf, s_state, sizeof(buf));
 	taskEXIT_CRITICAL(&s_state_mux);
-	return os_mbuf_append(ctxt->om, buf, len) == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
+	return os_mbuf_append(ctxt->om, buf, sizeof(buf)) == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
 }
 
 static const struct ble_gatt_svc_def s_gatt_svcs[] = {
@@ -141,22 +129,16 @@ static const struct ble_gatt_svc_def s_gatt_svcs[] = {
 		.characteristics =
 			(struct ble_gatt_chr_def[]){
 				{
-					.uuid = &s_rx_uuid.u,
+					.uuid = &s_cmd_uuid.u,
 					.access_cb = chr_access,
 					.flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_WRITE_NO_RSP,
-					.val_handle = &s_rx_handle,
+					.val_handle = &s_cmd_handle,
 				},
 				{
 					.uuid = &s_state_uuid.u,
 					.access_cb = chr_access,
 					.flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
 					.val_handle = &s_state_handle,
-				},
-				{
-					.uuid = &s_ext_state_uuid.u,
-					.access_cb = chr_access,
-					.flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
-					.val_handle = &s_ext_state_handle,
 				},
 				{0},
 			},
@@ -178,8 +160,6 @@ static void advertise(void) {
 	fields.uuids128 = &s_svc_uuid;
 	fields.num_uuids128 = 1;
 	fields.uuids128_is_complete = 1;
-	fields.svc_data_uuid16 = s_svc_data;
-	fields.svc_data_uuid16_len = sizeof(s_svc_data);
 	int rc = ble_gap_adv_set_fields(&fields);
 	if (rc != 0) {
 		ESP_LOGE(TAG, "Set adv data failed: %d.", rc);
@@ -191,8 +171,6 @@ static void advertise(void) {
 	rsp.name = (const uint8_t *)name;
 	rsp.name_len = strlen(name);
 	rsp.name_is_complete = 1;
-	rsp.svc_data_uuid16 = s_svc_data;
-	rsp.svc_data_uuid16_len = sizeof(s_svc_data);
 	rc = ble_gap_adv_rsp_set_fields(&rsp);
 	if (rc != 0) {
 		ESP_LOGE(TAG, "Set scan response failed: %d.", rc);
@@ -226,18 +204,20 @@ static int gap_event(struct ble_gap_event *event, void *arg) {
 		s_last_activity_us = esp_timer_get_time();
 		if (ble_gap_conn_find(event->connect.conn_handle, &desc) == 0) {
 			const uint8_t *a = desc.peer_id_addr.val;
-			ESP_LOGI(TAG, "Device connected: %02x:%02x:%02x:%02x:%02x:%02x.", a[5], a[4], a[3],
-					 a[2], a[1], a[0]);
+			ESP_LOGI(TAG, "Device connected: %02x:%02x:%02x:%02x:%02x:%02x (interval %d x1.25ms).",
+					 a[5], a[4], a[3], a[2], a[1], a[0], desc.conn_itvl);
 		}
-		/* V1 requested encryption straight away - keep that. */
-		ble_gap_security_initiate(event->connect.conn_handle);
 		if (s_cfg.on_connection) {
 			s_cfg.on_connection(true);
 		}
 		return 0;
 
 	case BLE_GAP_EVENT_DISCONNECT:
-		ESP_LOGI(TAG, "Device disconnected (reason 0x%x).", event->disconnect.reason);
+		/* 0x2xx = HCI reason: 0x213 phone closed the link, 0x208 supervision timeout,
+		 * 0x216 we closed it, 0x23d MIC failure (bad keys). */
+		ESP_LOGI(TAG, "Device disconnected (reason 0x%x, encrypted=%d bonded=%d).",
+				 event->disconnect.reason, event->disconnect.conn.sec_state.encrypted,
+				 event->disconnect.conn.sec_state.bonded);
 		s_conn_handle = BLE_HS_CONN_HANDLE_NONE;
 		if (s_cfg.on_connection) {
 			s_cfg.on_connection(false);
@@ -250,11 +230,28 @@ static int gap_event(struct ble_gap_event *event, void *arg) {
 		return 0;
 
 	case BLE_GAP_EVENT_ENC_CHANGE:
-		if (ble_gap_conn_find(event->enc_change.conn_handle, &desc) == 0) {
-			ESP_LOGI(TAG, "Encryption %s (bonded=%d).",
-					 event->enc_change.status == 0 ? "enabled" : "failed", desc.sec_state.bonded);
+		if (event->enc_change.status == 0) {
+			if (ble_gap_conn_find(event->enc_change.conn_handle, &desc) == 0) {
+				ESP_LOGI(TAG, "Encryption enabled (bonded=%d, key size %d).", desc.sec_state.bonded,
+						 desc.sec_state.key_size);
+			}
+		} else {
+			ESP_LOGW(TAG, "Encryption failed (status 0x%x). If this repeats, remove the device "
+						  "from the phone's Bluetooth settings and connect again.",
+					 event->enc_change.status);
 		}
 		return 0;
+
+	case BLE_GAP_EVENT_PASSKEY_ACTION: {
+		/* No display/keyboard: accept numeric comparison, anything else is Just Works. */
+		struct ble_sm_io io = {.action = event->passkey.params.action};
+		if (io.action == BLE_SM_IOACT_NUMCMP) {
+			io.numcmp_accept = 1;
+		}
+		ESP_LOGI(TAG, "Pairing action %d.", io.action);
+		ble_sm_inject_io(event->passkey.conn_handle, &io);
+		return 0;
+	}
 
 	case BLE_GAP_EVENT_REPEAT_PAIRING:
 		/* Phone lost its bond (app reinstall / forget device) - drop ours and re-pair. */
@@ -264,12 +261,12 @@ static int gap_event(struct ble_gap_event *event, void *arg) {
 		return BLE_GAP_REPEAT_PAIRING_RETRY;
 
 	case BLE_GAP_EVENT_SUBSCRIBE:
-		ESP_LOGD(TAG, "Subscribe attr %d notify=%d.", event->subscribe.attr_handle,
+		ESP_LOGI(TAG, "Subscribe attr %d notify=%d.", event->subscribe.attr_handle,
 				 event->subscribe.cur_notify);
 		return 0;
 
 	case BLE_GAP_EVENT_MTU:
-		ESP_LOGD(TAG, "MTU %d.", event->mtu.value);
+		ESP_LOGI(TAG, "MTU %d.", event->mtu.value);
 		return 0;
 
 	default:
@@ -300,15 +297,6 @@ static void host_task(void *param) {
 	nimble_port_freertos_deinit();
 }
 
-/* V1 (Bluedroid) notified whether or not the phone wrote the CCCD, and the V1 app relies on
- * that - so notify the connected peer directly instead of only subscribed clients. */
-static void push_state(uint16_t handle) {
-	uint16_t conn = s_conn_handle;
-	if (conn != BLE_HS_CONN_HANDLE_NONE && handle != 0) {
-		ble_gatts_notify(conn, handle);
-	}
-}
-
 /* ---------- Public API ---------- */
 
 esp_err_t ble_gdp_init(const ble_gdp_config_t *cfg) {
@@ -334,7 +322,7 @@ esp_err_t ble_gdp_init(const ble_gdp_config_t *cfg) {
 	ble_hs_cfg.sync_cb = on_sync;
 	ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
 
-	/* Same security as V1: bonding + LE secure connections, no IO (Just Works). */
+	/* Bonding + LE secure connections, no IO (Just Works). The phone starts pairing. */
 	ble_hs_cfg.sm_io_cap = BLE_SM_IO_CAP_NO_IO;
 	ble_hs_cfg.sm_bonding = 1;
 	ble_hs_cfg.sm_sc = 1;
@@ -390,31 +378,15 @@ esp_err_t ble_gdp_set_response(const uint8_t *data, size_t len) {
 	return ESP_OK;
 }
 
-void ble_gdp_set_state(uint8_t state) {
+void ble_gdp_set_state(const uint8_t state[BLE_GDP_STATE_LEN]) {
 	bool changed;
 	taskENTER_CRITICAL(&s_state_mux);
-	changed = s_state != state;
-	s_state = state;
+	changed = memcmp(s_state, state, BLE_GDP_STATE_LEN) != 0;
+	memcpy(s_state, state, BLE_GDP_STATE_LEN);
 	taskEXIT_CRITICAL(&s_state_mux);
-	if (changed) {
-		push_state(s_state_handle);
+	if (changed && s_state_handle) {
+		ble_gatts_chr_updated(s_state_handle);
 	}
-}
-
-void ble_gdp_set_ext_state(const uint8_t state[BLE_GDP_EXT_STATE_LEN]) {
-	bool changed;
-	taskENTER_CRITICAL(&s_state_mux);
-	changed = memcmp(s_ext_state, state, BLE_GDP_EXT_STATE_LEN) != 0;
-	memcpy(s_ext_state, state, BLE_GDP_EXT_STATE_LEN);
-	taskEXIT_CRITICAL(&s_state_mux);
-	if (changed) {
-		push_state(s_ext_state_handle);
-	}
-}
-
-void ble_gdp_resend_state(void) {
-	push_state(s_state_handle);
-	push_state(s_ext_state_handle);
 }
 
 esp_err_t ble_gdp_set_name(const char *name) {
@@ -438,6 +410,12 @@ esp_err_t ble_gdp_disconnect(void) {
 		return ESP_OK;
 	}
 	return ble_gap_terminate(handle, BLE_ERR_REM_USER_CONN_TERM) == 0 ? ESP_OK : ESP_FAIL;
+}
+
+esp_err_t ble_gdp_clear_bonds(void) {
+	int rc = ble_store_clear();
+	ESP_LOGW(TAG, "Bonds cleared (%d).", rc);
+	return rc == 0 ? ESP_OK : ESP_FAIL;
 }
 
 bool ble_gdp_is_connected(void) {

@@ -1,4 +1,4 @@
-# Garage Door Controller V3
+# Garage Door Controller
 
 ESP32-C3 firmware that replaces the Forcedoor Wi-Fi dongle. It talks to the motor unit over its
 UART port and can be controlled two ways:
@@ -7,7 +7,7 @@ UART port and can be controlled two ways:
   Wi-Fi, MQTT, the device name and the door password.
 - **Home Assistant over Wi-Fi:** MQTT with auto-discovery.
 
-Password-based control from V1 still works: the existing app commands and GATT UUIDs are unchanged.
+Phone control is password protected; Home Assistant control is protected by the MQTT broker login.
 
 ```
 Phone app ──BLE──> ble_gdp ──> app_ble_cmd ─┐
@@ -84,55 +84,44 @@ idf.py build flash monitor
 
 ## Phone app: BLE protocol
 
-The device advertises as the configured name (default `BLEDoor`). The advertisement carries the
-GDP 128-bit service UUID and the "AWI" service data, the same as V1. Pairing is bonding with Just
-Works, as in V1.
+The device advertises the GDP service UUID with its name (default `BLEDoor`) in the scan response.
+Pairing (bonding, LE Secure Connections, Just Works) is started by the phone.
 
-| Characteristic (UUID, LSB-first bytes as in V1) | Props | Content |
+| Characteristic | Props | Content |
 |---|---|---|
-| Service `…50 00 00 3D 71` | | |
-| Data `…50 03 00 3D 71` | write, write-no-rsp, read | write `[cmd][payload]`, then read the reply |
-| State `…50 02 00 3D 71` | read, notify | 1 byte: bit0 = door closed, bit1 = input mode (V1) |
-| Ext state `…50 04 00 3D 71` | read, notify | 4 bytes: position % (FF unknown), op (0 opening/1 stopped/2 closing/FF), LED (1/0/FF), flags (bit0 Wi-Fi configured, bit1 Wi-Fi up, bit2 MQTT up) |
+| Service `713D0000-503E-4C75-BA94-3148F18D941E` | | |
+| Command `713D0003-…` | write, write-no-rsp, read | write `[cmd][payload]`, then read `[status][data]` |
+| State `713D0002-…` | read, notify | 4 bytes: position % (FF unknown), op (0 opening / 1 stopped / 2 closing / FF), LED (1/0/FF), flags (bit0 Wi-Fi configured, bit1 Wi-Fi up, bit2 MQTT up) |
 
-The reply is `"OK\r\n\0"` or `"ERROR\r\n\0"`, byte-identical to V1, or data for GET/INFO. **Any
-failed command replies ERROR and the device drops the link after 1 s.**
-
-### V1 commands (unchanged)
+Every command except AUTH needs a successful AUTH on the current connection.
 
 | Cmd | Payload | Action |
 |---|---|---|
-| `0x00` or `'0'` | password | Toggle door. Moving → stop, closed → open, open → close. |
-| `0x01` | password, then new name within 2 s | Set device (BLE) name |
-| `0x02` | password, then new password within 1 s | Set door password |
-| `0x03` | – | Reboot |
-| `0x04` | `'0'`/`'1'` | Input mode. Stored and reported in state bit1 only, because there is no GPIO input any more. |
+| `0x01` AUTH | password | Unlocks the other commands until disconnect |
+| `0x02` DOOR | 1 byte action | 0 open, 1 stop, 2 close, 3 partial, 4 LED on, 5 LED off, 6 toggle (stop if moving, else open/close) |
+| `0x03` SET | key, flags, value bytes | flags bit0 = first chunk, bit1 = last chunk; `0x03` for a single write. Chunk values longer than MTU−6. |
+| `0x04` GET | key | data: value. Secrets come back as `********` when set. |
+| `0x05` APPLY | – | Reconnect Wi-Fi and MQTT using the saved settings |
+| `0x06` INFO | – | data: `fw=..;name=..;wifi=connected;ssid=..;ip=..;rssi=..;mqtt=1;pos=..;op=..;led=..` |
+| `0x07` REBOOT | – | Restart the controller |
+| `0x08` FACTORY RESET | – | Erase settings and bonded phones, reboot |
 
-### V3 commands (send AUTH once per connection)
-
-| Cmd | Payload | Action |
-|---|---|---|
-| `0x10` AUTH | password | Unlocks the commands below until disconnect |
-| `0x11` DOOR | 1 byte action | 0 open, 1 stop, 2 close, 3 partial, 4 LED on, 5 LED off, 6 toggle |
-| `0x12` SET | key, flags, value bytes | flags bit0 = first chunk, bit1 = last chunk. Use `0x03` for a single write. Chunk values that are longer than MTU−6. |
-| `0x13` GET | key | Reply: value + NUL. Secrets come back as `********`. |
-| `0x14` APPLY | – | Reconnect Wi-Fi and MQTT using the saved settings |
-| `0x15` INFO | – | Reply: `fw=..;name=..;wifi=connected;ssid=..;ip=..;rssi=..;mqtt=1;pos=..;op=..;led=..` |
-| `0x16` FACTORY RESET | – | Erase all settings and reboot |
+Reply status byte: `0x00` OK, `0x01` auth (wrong password / not authenticated), `0x02` invalid
+payload, `0x03` failed, `0x04` unknown command. **A wrong password drops the link after 1 s.**
 
 Keys: 1 Wi-Fi SSID, 2 Wi-Fi password (empty or 8–64), 3 MQTT URI (`mqtt://192.168.1.10:1883`,
 `mqtts://…`), 4 MQTT user, 5 MQTT password, 6 device name (≤20), 7 door password (≤20).
 
 Example provisioning sequence:
 ```
-10 <pw>                        AUTH
-12 01 03 "MyWiFi"              SET SSID
-12 02 03 "wifipassword"        SET Wi-Fi password
-12 03 03 "mqtt://10.0.0.5:1883"
-12 04 03 "garage"              MQTT user
-12 05 03 "secret"              MQTT password
-14                             APPLY
-15                             INFO -> check wifi=connected;mqtt=1
+01 <pw>                        AUTH
+03 01 03 "MyWiFi"              SET SSID
+03 02 03 "wifipassword"        SET Wi-Fi password
+03 03 03 "mqtt://10.0.0.5:1883"
+03 04 03 "garage"              MQTT user
+03 05 03 "secret"              MQTT password
+05                             APPLY
+06                             INFO -> check wifi=connected;mqtt=1
 ```
 
 ## Home Assistant
@@ -149,16 +138,3 @@ The node id is `gdc_` plus the last 3 bytes of the MAC.
 
 Topics are `garage_door/<node_id>/door/set|state|position|operation`, `led/set|state`,
 `partial/press`, `restart/press` and `rssi`.
-
-## Behaviour changes from V1
-
-- Bluedroid is replaced by NimBLE. The UUIDs, advertising data, replies and command bytes are
-  unchanged.
-- The GPIO relay and reed input are replaced by the motor's UART protocol. "Open" is now a smart
-  toggle, and the real position is reported.
-- A phone that is idle for 5 min is disconnected. V1 rebooted the whole device in that case.
-- The 24 h periodic reboot is kept, but it only runs when no phone is connected and the door isn't
-  moving. Set it to 0 in menuconfig to disable it.
-- The V1 anti-tamper `verify_config` obfuscation was removed.
-- NVS writes are committed properly, and the name length is checked against the correct limit. V1
-  could overflow here.

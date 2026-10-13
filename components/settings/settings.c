@@ -10,7 +10,6 @@
 static const char *TAG = "SETTINGS";
 
 #define STORAGE_NAMESPACE "config"
-#define INPUT_MODE_KEY "input"
 
 typedef struct {
 	const char *key;
@@ -19,7 +18,6 @@ typedef struct {
 	bool secret;
 } setting_desc_t;
 
-/* "pass"/"name" keys kept from V1 so the layout stays familiar. */
 static const setting_desc_t s_desc[SETTING_MAX] = {
 	[SETTING_WIFI_SSID] = {"wifi_ssid", 0, SETTINGS_WIFI_SSID_MAX, false},
 	[SETTING_WIFI_PASS] = {"wifi_pass", 0, SETTINGS_WIFI_PASS_MAX, true},
@@ -32,7 +30,6 @@ static const setting_desc_t s_desc[SETTING_MAX] = {
 
 /* RAM cache, one slot per id sized for the largest value. */
 static char s_values[SETTING_MAX][SETTINGS_MQTT_URI_MAX + 1];
-static uint8_t s_input_mode = SWITCH_NORMALLY_OPEN;
 static SemaphoreHandle_t s_lock;
 
 static bool id_valid(setting_id_t id) {
@@ -81,9 +78,6 @@ esp_err_t settings_init(const settings_defaults_t *defaults) {
 			fallback = defaults->door_pass;
 		}
 		load_str(handle, id, fallback);
-	}
-	if (nvs_get_u8(handle, INPUT_MODE_KEY, &s_input_mode) != ESP_OK) {
-		s_input_mode = SWITCH_NORMALLY_OPEN;
 	}
 	nvs_close(handle);
 
@@ -164,27 +158,6 @@ bool settings_check_password(const uint8_t *pass, size_t len) {
 	}
 	xSemaphoreGive(s_lock);
 	return stored_len > 0 && diff == 0;
-}
-
-input_mode_t settings_get_input_mode(void) {
-	return s_input_mode ? SWITCH_NORMALLY_CLOSED : SWITCH_NORMALLY_OPEN;
-}
-
-esp_err_t settings_set_input_mode(input_mode_t mode) {
-	nvs_handle_t handle;
-	esp_err_t err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &handle);
-	if (err != ESP_OK) {
-		return err;
-	}
-	err = nvs_set_u8(handle, INPUT_MODE_KEY, (uint8_t)mode);
-	if (err == ESP_OK) {
-		err = nvs_commit(handle);
-	}
-	nvs_close(handle);
-	if (err == ESP_OK) {
-		s_input_mode = (uint8_t)mode;
-	}
-	return err;
 }
 
 esp_err_t settings_factory_reset(void) {

@@ -27,11 +27,6 @@ typedef enum {
 	SETTING_MAX
 } setting_id_t;
 
-typedef enum {
-	SWITCH_NORMALLY_OPEN = 0,
-	SWITCH_NORMALLY_CLOSED = 1
-} input_mode_t;
-
 typedef struct {
 	const char *device_name; /* Used when NVS has no value. */
 	const char *door_pass;
@@ -57,9 +52,6 @@ bool settings_is_secret(setting_id_t id);
 
 /** @brief Constant-time compare against the stored door password. */
 bool settings_check_password(const uint8_t *pass, size_t len);
-
-input_mode_t settings_get_input_mode(void);
-esp_err_t settings_set_input_mode(input_mode_t mode);
 
 /** @brief Erase every stored setting (defaults apply after reboot). */
 esp_err_t settings_factory_reset(void);

@@ -44,7 +44,7 @@ static void supervisor_task(void *arg) {
 			restart_now();
 		}
 
-		/* V1 rebooted after 5 min connected without a command - just drop the link now. */
+		/* Free the single BLE slot if a phone sits connected without sending commands. */
 		if (ble_gdp_idle_ms() > CONFIG_GDC_BLE_IDLE_TIMEOUT_S * 1000U) {
 			ESP_LOGI(TAG, "BLE client idle, disconnecting.");
 			ble_gdp_disconnect();
@@ -54,10 +54,6 @@ static void supervisor_task(void *arg) {
 			!motor_is_moving()) {
 			ESP_LOGI(TAG, "Periodic reboot.");
 			restart_now();
-		}
-
-		if (ble_gdp_is_connected()) {
-			ble_gdp_resend_state();
 		}
 
 		if (++ticks % RSSI_PERIOD_S == 0) {

@@ -1,5 +1,5 @@
 /*
- * Garage Door Controller V3
+ * Garage Door Controller
  *
  *  Phone app --BLE (NimBLE)--> GDP service --> command processor --+
  *  Home Assistant --MQTT/Wi-Fi--> ha_mqtt -------------------------+--> door service --UART--> Forcedoor motor

@@ -6,18 +6,14 @@
 #include "ble_gdp.h"
 #include "ha_mqtt.h"
 #include "net_wifi.h"
-#include "settings.h"
 
 static const char *TAG = "DOOR";
 
-/* Legacy state byte (V1): bit0 = door closed, bit1 = input mode. */
-#define LEGACY_DOOR_OPEN 0x00
-#define LEGACY_DOOR_CLOSED 0x01
-
-/* Extended state flags byte. */
-#define EXT_FLAG_WIFI_CONFIGURED (1 << 0)
-#define EXT_FLAG_WIFI_CONNECTED (1 << 1)
-#define EXT_FLAG_MQTT_CONNECTED (1 << 2)
+/* BLE state characteristic: [position %][operation][LED][flags], 0xFF = unknown. */
+#define STATE_UNKNOWN 0xFF
+#define STATE_FLAG_WIFI_CONFIGURED (1 << 0)
+#define STATE_FLAG_WIFI_CONNECTED (1 << 1)
+#define STATE_FLAG_MQTT_CONNECTED (1 << 2)
 
 static const motor_cmd_t s_action_cmd[] = {
 	[DOOR_ACT_OPEN] = MOTOR_CMD_OPEN,       [DOOR_ACT_STOP] = MOTOR_CMD_STOP,
@@ -26,28 +22,24 @@ static const motor_cmd_t s_action_cmd[] = {
 };
 
 static void update_ble(const motor_state_t *st) {
-	/* Unknown counts as open so the app never shows a false "closed". */
-	uint8_t closed = (st->valid && st->position == 0) ? LEGACY_DOOR_CLOSED : LEGACY_DOOR_OPEN;
-	ble_gdp_set_state(closed | (uint8_t)(settings_get_input_mode() << 1));
-
 	uint8_t flags = 0;
 	net_wifi_state_t ws = net_wifi_get_state();
 	if (ws != NET_WIFI_DISABLED) {
-		flags |= EXT_FLAG_WIFI_CONFIGURED;
+		flags |= STATE_FLAG_WIFI_CONFIGURED;
 	}
 	if (ws == NET_WIFI_CONNECTED) {
-		flags |= EXT_FLAG_WIFI_CONNECTED;
+		flags |= STATE_FLAG_WIFI_CONNECTED;
 	}
 	if (ha_mqtt_is_connected()) {
-		flags |= EXT_FLAG_MQTT_CONNECTED;
+		flags |= STATE_FLAG_MQTT_CONNECTED;
 	}
-	const uint8_t ext[BLE_GDP_EXT_STATE_LEN] = {
-		st->valid ? st->position : 0xFF,
-		st->valid ? (uint8_t)st->op : 0xFF,
-		st->led < 0 ? 0xFF : (uint8_t)st->led,
+	const uint8_t state[BLE_GDP_STATE_LEN] = {
+		st->valid ? st->position : STATE_UNKNOWN,
+		st->valid ? (uint8_t)st->op : STATE_UNKNOWN,
+		st->led < 0 ? STATE_UNKNOWN : (uint8_t)st->led,
 		flags,
 	};
-	ble_gdp_set_ext_state(ext);
+	ble_gdp_set_state(state);
 }
 
 static void update_ha(const motor_state_t *st) {

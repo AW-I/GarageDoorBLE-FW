@@ -11,7 +11,7 @@ typedef enum {
 	DOOR_ACT_PARTIAL = 3,
 	DOOR_ACT_LED_ON = 4,
 	DOOR_ACT_LED_OFF = 5,
-	DOOR_ACT_TOGGLE = 6, /* Single button behaviour of the V1 app. */
+	DOOR_ACT_TOGGLE = 6, /* Wall-button behaviour: stop if moving, else open/close. */
 	DOOR_ACT_MAX
 } door_action_t;
 
@@ -20,7 +20,7 @@ esp_err_t app_door_init(void);
 
 esp_err_t app_door_action(door_action_t action, const char *source);
 
-/** @brief Recompute BLE state characteristics (call after network/settings changes). */
+/** @brief Recompute the BLE state characteristic (call after network changes). */
 void app_door_refresh_status(void);
 
 #endif
