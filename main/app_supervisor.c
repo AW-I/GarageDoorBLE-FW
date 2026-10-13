@@ -6,6 +6,7 @@
 #include "esp_log.h"
 #include "sdkconfig.h"
 
+#include "app_ota.h"
 #include "app_supervisor.h"
 #include "ble_gdp.h"
 #include "ha_mqtt.h"
@@ -42,6 +43,12 @@ static void supervisor_task(void *arg) {
 
 		if (s_restart_requested) {
 			restart_now();
+		}
+
+		/* Nobody logged in after an update, but the image has run fine - keep it. */
+		if (CONFIG_GDC_OTA_CONFIRM_AFTER_S > 0 && app_ota_pending_confirm() &&
+			esp_timer_get_time() > (int64_t)CONFIG_GDC_OTA_CONFIRM_AFTER_S * 1000000LL) {
+			app_ota_confirm();
 		}
 
 		/* Free the single BLE slot if a phone sits connected without sending commands. */

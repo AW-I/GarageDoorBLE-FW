@@ -45,7 +45,8 @@ menu "Garage Door Controller"
             default 8
             help
                 Plain LED. Off: no Wi-Fi configured. Blinking: searching for Wi-Fi.
-                Solid: connected. A short flash marks each command sent to the motor.
+                Double blink: Wi-Fi up, MQTT broker not connected. Solid: connected.
+                A short flash marks each command sent to the motor.
                 GPIO8 is a strapping pin on the C3 - fine as an output after boot.
 
         config GDC_STATUS_LED_ACTIVE_LOW
@@ -83,12 +84,23 @@ menu "Garage Door Controller"
         config GDC_BLE_IDLE_TIMEOUT_S
             int "Disconnect idle BLE client after (s)"
             default 300
+            help
+                Frees the single BLE slot when a phone stops talking. Any write or state read
+                counts as activity; the app reads the state every 60 s while it is open.
 
         config GDC_PERIODIC_REBOOT_H
             int "Periodic reboot interval (hours, 0 = never)"
             default 24
             help
                 Reboot only happens while no phone is connected and the door is not moving.
+
+        config GDC_OTA_CONFIRM_AFTER_S
+            int "Keep a new firmware image after this much uptime (s, 0 = only on BLE login)"
+            default 600
+            help
+                After a BLE update the new image runs in trial mode. A successful BLE AUTH keeps
+                it straight away. Otherwise it is kept once it has run this long; if it crashes
+                or resets before then, the bootloader goes back to the previous firmware.
     endmenu
 
 endmenu

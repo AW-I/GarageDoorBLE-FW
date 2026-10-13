@@ -16,6 +16,9 @@
 
 static const char *TAG = "NET";
 
+/* Wi-Fi and a broker are both configured, so Home Assistant is expected to be up. */
+static volatile bool s_mqtt_enabled;
+
 void app_net_node_id(char *out, size_t out_len) {
 	uint8_t mac[6] = {0};
 	esp_read_mac(mac, ESP_MAC_WIFI_STA);
@@ -42,11 +45,14 @@ static void make_hostname(const char *name, char *out, size_t out_len) {
 	}
 }
 
-/* LED: off = no Wi-Fi configured, blinking = searching / reconnecting, solid = connected. */
-static void show_wifi_state(net_wifi_state_t state) {
-	switch (state) {
+/* LED: off = no Wi-Fi configured, blinking = searching / reconnecting, double blink = Wi-Fi up
+ * but the MQTT broker is not, solid = everything configured is connected.
+ * Called from the Wi-Fi and MQTT tasks; it recomputes from current state, so order does not matter. */
+static void update_led(void) {
+	switch (net_wifi_get_state()) {
 	case NET_WIFI_CONNECTED:
-		status_led_set_mode(STATUS_LED_ON);
+		status_led_set_mode(s_mqtt_enabled && !ha_mqtt_is_connected() ? STATUS_LED_DOUBLE_BLINK
+																	   : STATUS_LED_ON);
 		break;
 	case NET_WIFI_CONNECTING:
 		status_led_set_mode(STATUS_LED_BLINK);
@@ -58,11 +64,12 @@ static void show_wifi_state(net_wifi_state_t state) {
 }
 
 static void on_wifi_state(net_wifi_state_t state) {
-	show_wifi_state(state);
+	update_led();
 	app_door_refresh_status();
 }
 
 static void on_mqtt_connection(bool connected) {
+	update_led();
 	app_door_refresh_status();
 }
 
@@ -104,7 +111,6 @@ esp_err_t app_net_apply(void) {
 	make_hostname(name, host, sizeof(host));
 
 	esp_err_t err = net_wifi_apply(ssid, pass, host);
-	show_wifi_state(net_wifi_get_state());
 	if (err != ESP_OK) {
 		ESP_LOGE(TAG, "Wi-Fi apply failed: %s.", esp_err_to_name(err));
 	}
@@ -117,6 +123,7 @@ esp_err_t app_net_apply(void) {
 	settings_get_str(SETTING_MQTT_USER, user, sizeof(user));
 	settings_get_str(SETTING_MQTT_PASS, mpass, sizeof(mpass));
 	app_net_node_id(node, sizeof(node));
+	s_mqtt_enabled = ssid[0] && uri[0];
 
 	const ha_mqtt_config_t hcfg = {
 		.uri = ssid[0] ? uri : "", /* No Wi-Fi, no broker. */
@@ -134,6 +141,7 @@ esp_err_t app_net_apply(void) {
 	if (merr != ESP_OK) {
 		ESP_LOGE(TAG, "MQTT start failed: %s.", esp_err_to_name(merr));
 	}
+	update_led();
 	app_door_refresh_status();
 	return err != ESP_OK ? err : merr;
 }

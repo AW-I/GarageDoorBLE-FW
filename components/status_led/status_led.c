@@ -7,8 +7,20 @@
 static const char *TAG = "STATUS_LED";
 
 #define TICK_US (50 * 1000)
-#define BLINK_HALF_PERIOD_US (250 * 1000) /* 2 Hz blink */
 #define FLASH_US (120 * 1000)
+
+/* A pattern repeats every `slots` ticks (50 ms each); bit n of `on` lights the LED in slot n. */
+typedef struct {
+	uint8_t slots;
+	uint32_t on;
+} pattern_t;
+
+static const pattern_t s_patterns[STATUS_LED_MODE_MAX] = {
+	[STATUS_LED_OFF] = {1, 0x0},
+	[STATUS_LED_BLINK] = {10, 0x3E0},       /* 250 ms off, 250 ms on */
+	[STATUS_LED_DOUBLE_BLINK] = {24, 0x33}, /* 100 on, 100 off, 100 on, 900 off */
+	[STATUS_LED_ON] = {1, 0x1},
+};
 
 static int s_gpio = -1;
 static bool s_active_low;
@@ -18,18 +30,8 @@ static esp_timer_handle_t s_timer;
 
 static void tick(void *arg) {
 	int64_t now = esp_timer_get_time();
-	bool on;
-	switch (s_mode) {
-	case STATUS_LED_ON:
-		on = true;
-		break;
-	case STATUS_LED_BLINK:
-		on = (now / BLINK_HALF_PERIOD_US) & 1;
-		break;
-	default:
-		on = false;
-		break;
-	}
+	const pattern_t *p = &s_patterns[s_mode];
+	bool on = (p->on >> ((now / TICK_US) % p->slots)) & 1;
 	/* Activity flash shows as the opposite of the background pattern. */
 	if (now < s_flash_until_us) {
 		on = !on;
@@ -62,7 +64,9 @@ esp_err_t status_led_init(int gpio, bool active_low) {
 }
 
 void status_led_set_mode(status_led_mode_t mode) {
-	s_mode = mode;
+	if (mode < STATUS_LED_MODE_MAX) {
+		s_mode = mode;
+	}
 }
 
 void status_led_flash(void) {

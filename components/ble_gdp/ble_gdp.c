@@ -33,6 +33,7 @@ void ble_store_config_init(void);
 static const ble_uuid128_t s_svc_uuid = GDP_UUID(0x00);
 static const ble_uuid128_t s_state_uuid = GDP_UUID(0x02);
 static const ble_uuid128_t s_cmd_uuid = GDP_UUID(0x03);
+static const ble_uuid128_t s_data_uuid = GDP_UUID(0x04);
 
 typedef struct {
 	uint16_t len;
@@ -47,7 +48,7 @@ static volatile bool s_synced;
 static volatile uint16_t s_conn_handle = BLE_HS_CONN_HANDLE_NONE;
 static volatile int64_t s_last_activity_us;
 
-static uint16_t s_cmd_handle, s_state_handle;
+static uint16_t s_cmd_handle, s_state_handle, s_data_handle;
 static QueueHandle_t s_rx_queue;
 
 static SemaphoreHandle_t s_resp_lock;
@@ -107,14 +108,35 @@ static int cmd_access(struct ble_gatt_access_ctxt *ctxt) {
 	return BLE_ATT_ERR_UNLIKELY;
 }
 
+static int data_access(struct ble_gatt_access_ctxt *ctxt) {
+	static uint8_t buf[BLE_GDP_RX_MAX]; /* Host task only - keep it off the stack. */
+	uint16_t len = 0;
+	if (ctxt->op != BLE_GATT_ACCESS_OP_WRITE_CHR || s_cfg.on_data == NULL) {
+		return BLE_ATT_ERR_UNLIKELY;
+	}
+	if (OS_MBUF_PKTLEN(ctxt->om) > sizeof(buf)) {
+		return BLE_ATT_ERR_INVALID_ATTR_VALUE_LEN;
+	}
+	if (ble_hs_mbuf_to_flat(ctxt->om, buf, sizeof(buf), &len) != 0) {
+		return BLE_ATT_ERR_UNLIKELY;
+	}
+	s_last_activity_us = esp_timer_get_time();
+	return s_cfg.on_data(buf, len) == 0 ? 0 : BLE_ATT_ERR_UNLIKELY;
+}
+
 static int chr_access(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt,
 					  void *arg) {
 	if (attr_handle == s_cmd_handle) {
 		return cmd_access(ctxt);
 	}
+	if (attr_handle == s_data_handle) {
+		return data_access(ctxt);
+	}
 	if (ctxt->op != BLE_GATT_ACCESS_OP_READ_CHR) {
 		return BLE_ATT_ERR_UNLIKELY;
 	}
+	/* The app reads the state periodically as a keepalive while it is open. */
+	s_last_activity_us = esp_timer_get_time();
 	uint8_t buf[BLE_GDP_STATE_LEN];
 	taskENTER_CRITICAL(&s_state_mux);
 	memcpy(buf, s_state, sizeof(buf));
@@ -139,6 +161,12 @@ static const struct ble_gatt_svc_def s_gatt_svcs[] = {
 					.access_cb = chr_access,
 					.flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
 					.val_handle = &s_state_handle,
+				},
+				{
+					.uuid = &s_data_uuid.u,
+					.access_cb = chr_access,
+					.flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_WRITE_NO_RSP,
+					.val_handle = &s_data_handle,
 				},
 				{0},
 			},

@@ -13,6 +13,7 @@
 #include "app_ble_cmd.h"
 #include "app_door.h"
 #include "app_net.h"
+#include "app_ota.h"
 #include "app_supervisor.h"
 #include "ble_gdp.h"
 #include "settings.h"
@@ -40,6 +41,7 @@ static void log_init(void) {
 	esp_log_level_set("NET_WIFI", level);
 	esp_log_level_set("HA_MQTT", level);
 	esp_log_level_set("STATUS_LED", level);
+	esp_log_level_set("OTA", level);
 }
 
 void app_main(void) {
@@ -52,6 +54,7 @@ void app_main(void) {
 		.door_pass = CONFIG_GDC_DEFAULT_PASSWORD,
 	};
 	ESP_ERROR_CHECK(settings_init(&defaults));
+	ESP_ERROR_CHECK(app_ota_init());
 
 	/* BLE first: it is the recovery path if anything below fails. */
 	char name[SETTINGS_NAME_MAX + 1];
@@ -59,6 +62,7 @@ void app_main(void) {
 	const ble_gdp_config_t ble_cfg = {
 		.device_name = name,
 		.on_connection = app_ble_cmd_on_connection,
+		.on_data = app_ota_on_data,
 	};
 	ESP_ERROR_CHECK(ble_gdp_init(&ble_cfg));
 	ESP_ERROR_CHECK(app_ble_cmd_init());

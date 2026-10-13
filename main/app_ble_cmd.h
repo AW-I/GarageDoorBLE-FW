@@ -19,6 +19,10 @@
  *  0x06  INFO                               data: key=value;... status text
  *  0x07  REBOOT
  *  0x08  FACTORY RESET                      erase settings and bonds, reboot
+ *  0x09  OTA_BEGIN      <size u32 LE>       start a firmware update (see app_ota.h)
+ *  0x0A  OTA_STATUS                         data: next expected offset u32 LE
+ *  0x0B  OTA_END                            verify the image, then reboot into it
+ *  0x0C  OTA_ABORT
  */
 typedef enum {
 	CMD_AUTH = 0x01,
@@ -29,6 +33,10 @@ typedef enum {
 	CMD_INFO = 0x06,
 	CMD_REBOOT = 0x07,
 	CMD_FACTORY_RESET = 0x08,
+	CMD_OTA_BEGIN = 0x09,
+	CMD_OTA_STATUS = 0x0A,
+	CMD_OTA_END = 0x0B,
+	CMD_OTA_ABORT = 0x0C,
 } cmd_t;
 
 typedef enum {

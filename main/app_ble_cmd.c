@@ -7,6 +7,7 @@
 #include "app_ble_cmd.h"
 #include "app_door.h"
 #include "app_net.h"
+#include "app_ota.h"
 #include "app_supervisor.h"
 #include "ble_gdp.h"
 #include "ha_mqtt.h"
@@ -63,6 +64,8 @@ static esp_err_t handle_auth(cmd_ctx_t *ctx) {
 		return ESP_ERR_INVALID_CRC; /* Mapped to RESP_AUTH. */
 	}
 	ESP_LOGI(TAG, "Session authenticated.");
+	/* A phone got in, so BLE works on this image - keep it after an update. */
+	app_ota_confirm();
 	return ESP_OK;
 }
 
@@ -161,6 +164,43 @@ static esp_err_t handle_factory_reset(cmd_ctx_t *ctx) {
 	return ESP_OK;
 }
 
+static uint32_t read_u32_le(const uint8_t *p) {
+	return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+
+static esp_err_t handle_ota_begin(cmd_ctx_t *ctx) {
+	if (ctx->len != 4) {
+		return ESP_ERR_INVALID_ARG;
+	}
+	return app_ota_begin(read_u32_le(ctx->data));
+}
+
+static esp_err_t handle_ota_status(cmd_ctx_t *ctx) {
+	uint32_t received;
+	esp_err_t err = app_ota_status(&received);
+	if (err != ESP_OK) {
+		return err;
+	}
+	for (int i = 0; i < 4; i++) {
+		ctx->resp[i] = (char)(received >> (8 * i));
+	}
+	ctx->resp_len = 4;
+	return ESP_OK;
+}
+
+static esp_err_t handle_ota_end(cmd_ctx_t *ctx) {
+	esp_err_t err = app_ota_finish();
+	if (err == ESP_OK) {
+		ctx->post = POST_RESTART;
+	}
+	return err;
+}
+
+static esp_err_t handle_ota_abort(cmd_ctx_t *ctx) {
+	app_ota_abort();
+	return ESP_OK;
+}
+
 static const cmd_callback_t cmd_callback_list[] = {
 	{CMD_AUTH, handle_auth},
 	{CMD_DOOR, handle_door},
@@ -170,6 +210,10 @@ static const cmd_callback_t cmd_callback_list[] = {
 	{CMD_INFO, handle_info},
 	{CMD_REBOOT, handle_reboot},
 	{CMD_FACTORY_RESET, handle_factory_reset},
+	{CMD_OTA_BEGIN, handle_ota_begin},
+	{CMD_OTA_STATUS, handle_ota_status},
+	{CMD_OTA_END, handle_ota_end},
+	{CMD_OTA_ABORT, handle_ota_abort},
 };
 
 /* ---------- task ---------- */
@@ -268,6 +312,7 @@ esp_err_t app_ble_cmd_init(void) {
 
 void app_ble_cmd_on_connection(bool connected) {
 	s_session = false;
+	app_ota_abort(); /* An update never outlives the connection that started it. */
 	s_set.key = 0;
 	s_set.len = 0;
 }

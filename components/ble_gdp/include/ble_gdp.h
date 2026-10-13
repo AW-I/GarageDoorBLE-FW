@@ -8,6 +8,7 @@
  *  Service  713D0000-503E-4C75-BA94-3148F18D941E
  *  Command  713D0003-...  write / write-no-rsp a command, then read its reply
  *  State    713D0002-...  read / notify, BLE_GDP_STATE_LEN bytes
+ *  Data     713D0004-...  write / write-no-rsp bulk data (firmware image chunks)
  */
 
 #include <stdbool.h>
@@ -21,9 +22,13 @@
 
 typedef void (*ble_gdp_conn_cb_t)(bool connected);
 
+/** @return 0 to accept the write, anything else rejects it (only seen by write-with-response). */
+typedef int (*ble_gdp_data_cb_t)(const uint8_t *data, size_t len);
+
 typedef struct {
 	const char *device_name;
 	ble_gdp_conn_cb_t on_connection; /* Optional, called from the NimBLE host task. */
+	ble_gdp_data_cb_t on_data;       /* Optional, called from the NimBLE host task in write order. */
 } ble_gdp_config_t;
 
 esp_err_t ble_gdp_init(const ble_gdp_config_t *cfg);
@@ -50,7 +55,7 @@ esp_err_t ble_gdp_clear_bonds(void);
 
 bool ble_gdp_is_connected(void);
 
-/** @brief Milliseconds since connect or the last command, 0 when not connected. */
+/** @brief Milliseconds since connect or the last write / state read, 0 when not connected. */
 uint32_t ble_gdp_idle_ms(void);
 
 #endif

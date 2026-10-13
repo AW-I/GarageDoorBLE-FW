@@ -1,9 +1,12 @@
 # Garage Door Controller V3 - ESP32-C3, NimBLE + Wi-Fi + MQTT (Home Assistant)
 CONFIG_IDF_TARGET="esp32c3"
 
-# Flash / partitions (Wi-Fi + BLE + MQTT/TLS needs the large app partition)
+# Flash / partitions: two 1.875 MB OTA slots (partitions.csv), firmware updates over BLE
 CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
-CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+# A new image that is never confirmed (BLE AUTH or stable uptime) is rolled back on next boot
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
 CONFIG_COMPILER_OPTIMIZATION_SIZE=y
 
 # Bluetooth: NimBLE host only (no Bluedroid)

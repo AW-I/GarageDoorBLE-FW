@@ -25,7 +25,7 @@ Home Assistant ──MQTT──> ha_mqtt ──────────┘      
 | `ble_gdp` | `components/ble_gdp` | NimBLE GATT server and advertising. It only handles transport. |
 | `net_wifi` | `components/net_wifi` | Wi-Fi station with exponential back-off reconnect. |
 | `ha_mqtt` | `components/ha_mqtt` | MQTT client, Home Assistant discovery, LWT availability, commands. |
-| app | `main/` | `app_door` (actions and state fan-out), `app_ble_cmd` (BLE command protocol), `app_net` (applies settings), `app_supervisor` (watchdog, idle disconnect, periodic reboot). |
+| app | `main/` | `app_door` (actions and state fan-out), `app_ble_cmd` (BLE command protocol), `app_net` (applies settings), `app_ota` (firmware update over BLE), `app_supervisor` (watchdog, idle disconnect, periodic reboot). |
 
 The components don't depend on each other. Only `main/` wires them together, and pins and timings
 are set in `main/Kconfig.projbuild` (`idf.py menuconfig` → *Garage Door Controller*).
@@ -60,7 +60,8 @@ Plain LED on GPIO8 (menuconfig *Garage Door Controller → Status LED*, active-l
 |---|---|
 | Off | No Wi-Fi configured |
 | Blinking (2 Hz) | Searching for / reconnecting to Wi-Fi |
-| Solid | Connected to Wi-Fi |
+| Double blink (every 1.2 s) | Wi-Fi connected, MQTT broker configured but not connected |
+| Solid | Connected to Wi-Fi (and to the broker, if one is configured) |
 | Short flash (inverted) | A command was sent to the motor (open, close, stop, partial, light) |
 
 ### Motor protocol
@@ -93,6 +94,31 @@ idf.py build flash monitor
 
 `espressif/mqtt` is pulled from the component registry on the first build.
 
+The version is set in `main/version.h`. CMake copies it into the image (`esp_app_desc_t`), where
+the phone app reads it from its bundled copy.
+
+### Firmware updates over BLE
+
+Flash layout (`partitions.csv`): two 1.875 MB OTA slots, plus `nvs` at the same offset and size as
+the old single-app table.
+
+**Migrating a controller from 1.0.0:** it has no OTA slots, so flash it over USB once with
+`idf.py flash`. Settings and bonded phones are kept because `nvs` did not move. After that, every
+update can go over BLE.
+
+**Releasing an update through the app:**
+1. Bump `VERSION` in `main/version.h` and run `idf.py build`.
+2. In GarageDoorBLE-App, run `gradlew copyFirmware`. This copies `build/GarageDoorBLE.bin` to
+   `app/src/main/assets/firmware/`.
+3. Build and ship the app. Settings → Firmware offers the update when the bundled version is newer
+   than the controller's.
+
+**Rollback:** the bootloader starts a new image in trial mode. It keeps the image after the first
+successful BLE AUTH, or after `GDC_OTA_CONFIRM_AFTER_S` (default 10 min) of uptime. If the image
+crashes or resets before either of those, the bootloader switches back to the previous firmware.
+`esp_ota_end` checks the SHA-256 appended to the image and the chip. The image must also have the
+same project name (`GarageDoorBLE`) as the running firmware.
+
 ## Phone app: BLE protocol
 
 The device advertises the GDP service UUID with its name (default `BLEDoor`) in the scan response.
@@ -103,6 +129,7 @@ Pairing (bonding, LE Secure Connections, Just Works) is started by the phone.
 | Service `713D0000-503E-4C75-BA94-3148F18D941E` | | |
 | Command `713D0003-…` | write, write-no-rsp, read | write `[cmd][payload]`, then read `[status][data]` |
 | State `713D0002-…` | read, notify | 4 bytes: position % (FF unknown), op (0 opening / 1 stopped / 2 closing / FF), LED (1/0/FF), flags (bit0 Wi-Fi configured, bit1 Wi-Fi up, bit2 MQTT up) |
+| Data `713D0004-…` | write, write-no-rsp | Firmware image chunks: `<offset u32 LE><bytes>`, only during an OTA |
 
 Every command except AUTH needs a successful AUTH on the current connection.
 
@@ -116,12 +143,21 @@ Every command except AUTH needs a successful AUTH on the current connection.
 | `0x06` INFO | – | data: `fw=..;name=..;wifi=connected;ssid=..;ip=..;rssi=..;mqtt=1;pos=..;op=..;led=..` |
 | `0x07` REBOOT | – | Restart the controller |
 | `0x08` FACTORY RESET | – | Erase settings and bonded phones, reboot |
+| `0x09` OTA_BEGIN | size u32 LE | Open the inactive OTA slot. `0x02` if the image does not fit |
+| `0x0A` OTA_STATUS | – | data: next expected offset (u32 LE). `0x03` once a flash write failed |
+| `0x0B` OTA_END | – | Verify the image, select it for boot, then reboot |
+| `0x0C` OTA_ABORT | – | Drop the update. Disconnecting does the same |
 
 Reply status byte: `0x00` OK, `0x01` auth (wrong password / not authenticated), `0x02` invalid
 payload, `0x03` failed, `0x04` unknown command. **A wrong password drops the link after 1 s.**
 
 Keys: 1 Wi-Fi SSID, 2 Wi-Fi password (empty or 8–64), 3 MQTT URI (`mqtt://192.168.1.10:1883`,
 `mqtts://…`), 4 MQTT user, 5 MQTT password, 6 device name (≤20), 7 door password (≤20).
+
+OTA transfer: after OTA_BEGIN, the phone sends a window of chunks (32 × MTU−7 bytes) as
+write-without-response on the data characteristic, then asks OTA_STATUS. The controller drops any
+chunk whose offset is not the next expected byte, so the phone resends from the offset that
+OTA_STATUS returns. When the offset reaches the image size, the phone sends OTA_END.
 
 Example provisioning sequence:
 ```
