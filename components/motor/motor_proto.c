@@ -82,8 +82,6 @@ const char *motor_cmd_str(motor_cmd_t cmd) {
 		return "STOP";
 	case MOTOR_CMD_CLOSE:
 		return "CLOSE";
-	case MOTOR_CMD_PARTIAL:
-		return "PARTIAL OPEN";
 	case MOTOR_CMD_LED_ON:
 		return "LED ON";
 	case MOTOR_CMD_LED_OFF:

@@ -52,6 +52,11 @@ motor D- ---[5k]---+--- GPIO4
 Measure 24 V before connecting anything. Avoid C3 strapping pins 2/8/9 and USB pins 18/19.
 UART: 115200 8N1.
 
+Wi-Fi: if the AP stops answering during authentication (3 failures in a row), the controller
+switches to 8.5 dBm TX power and back. Many ESP32-C3 SuperMini boards have a poorly matched
+antenna and cannot join at full power. The log shows `retrying at reduced TX power`, and
+`Connected ... (reduced TX power)` when that was what fixed it.
+
 ### Status LED
 
 Plain LED on GPIO8 (menuconfig *Garage Door Controller → Status LED*, active-low by default):
@@ -62,7 +67,7 @@ Plain LED on GPIO8 (menuconfig *Garage Door Controller → Status LED*, active-l
 | Blinking (2 Hz) | Searching for / reconnecting to Wi-Fi |
 | Double blink (every 1.2 s) | Wi-Fi connected, MQTT broker configured but not connected |
 | Solid | Connected to Wi-Fi (and to the broker, if one is configured) |
-| Short flash (inverted) | A command was sent to the motor (open, close, stop, partial, light) |
+| Short flash (inverted) | A command was sent to the motor (open, close, stop, light) |
 
 ### Motor protocol
 
@@ -74,7 +79,6 @@ all preceding bytes & 0xFF.
 | Open | `23 07 41 00 00 6B 0D` |
 | Stop | `23 07 41 01 00 6C 0D` |
 | Close | `23 07 41 02 00 6D 0D` |
-| Partial open | `23 07 41 03 00 6E 0D` |
 | LED on / off | `23 07 41 F0 00 5B 0D` / `23 07 41 F1 00 5C 0D` |
 
 Status frames are 17 bytes long: `40 11 49 <op> <led> … <pos%> … <sum> 0D`. `op` is 0 opening,
@@ -136,7 +140,7 @@ Every command except AUTH needs a successful AUTH on the current connection.
 | Cmd | Payload | Action |
 |---|---|---|
 | `0x01` AUTH | password | Unlocks the other commands until disconnect |
-| `0x02` DOOR | 1 byte action | 0 open, 1 stop, 2 close, 3 partial, 4 LED on, 5 LED off, 6 toggle (stop if moving, else open/close) |
+| `0x02` DOOR | 1 byte action | 0 open, 1 stop, 2 close, 4 LED on, 5 LED off, 6 toggle (stop if moving, else open/close) |
 | `0x03` SET | key, flags, value bytes | flags bit0 = first chunk, bit1 = last chunk; `0x03` for a single write. Chunk values longer than MTU−6. |
 | `0x04` GET | key | data: value. Secrets come back as `********` when set. |
 | `0x05` APPLY | – | Reconnect Wi-Fi and MQTT using the saved settings |
@@ -177,11 +181,11 @@ Example provisioning sequence:
 2. Provision the URI, user and password over BLE, then send APPLY.
 3. The device appears under **MQTT → Devices** with the device name.
 
-Entities: **Cover** (garage: open/close/stop with position), **LED** light, **Partial open** button,
+Entities: **Cover** (garage: open/close/stop with position), **LED** light,
 **Restart** button, **Position** sensor, **Operation** sensor, **Wi-Fi signal** sensor.
 Availability uses an LWT on `garage_door/<node_id>/status`.
 
 The node id is `gdc_` plus the last 3 bytes of the MAC.
 
 Topics are `garage_door/<node_id>/door/set|state|position|operation`, `led/set|state`,
-`partial/press`, `restart/press` and `rssi`.
+`restart/press` and `rssi`.

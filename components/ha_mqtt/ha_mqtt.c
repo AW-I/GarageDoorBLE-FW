@@ -126,11 +126,11 @@ static void publish_discovery(esp_mqtt_client_handle_t client) {
 			 b, b);
 	publish_discovery_entity(client, "light", "led", body);
 
-	snprintf(body, sizeof(body),
-			 "\"name\":\"Partial open\",\"command_topic\":\"%s/partial/press\","
-			 "\"payload_press\":\"PRESS\",\"icon\":\"mdi:garage-open-variant\"",
-			 b);
-	publish_discovery_entity(client, "button", "partial", body);
+	/* The partial open button was removed. Discovery configs are retained, so an empty retained
+	 * config is what deletes it from Home Assistant. */
+	char t[TOPIC_MAX];
+	snprintf(t, sizeof(t), "%s/button/%s/partial/config", s_ctx.discovery_prefix, s_ctx.node_id);
+	publish(client, t, "", true);
 
 	snprintf(body, sizeof(body),
 			 "\"name\":\"Restart\",\"command_topic\":\"%s/restart/press\",\"payload_press\":\"PRESS\","
@@ -260,8 +260,6 @@ static void handle_data(const esp_mqtt_event_t *ev) {
 		} else {
 			return;
 		}
-	} else if (topic_is(ev, "partial/press")) {
-		cmd = HA_CMD_PARTIAL;
 	} else if (topic_is(ev, "restart/press")) {
 		cmd = HA_CMD_RESTART;
 	} else {
@@ -287,8 +285,6 @@ static void mqtt_event_handler(void *arg, esp_event_base_t base, int32_t event_i
 		topic(t, "door/set");
 		esp_mqtt_client_subscribe(ev->client, t, 1);
 		topic(t, "led/set");
-		esp_mqtt_client_subscribe(ev->client, t, 1);
-		topic(t, "partial/press");
 		esp_mqtt_client_subscribe(ev->client, t, 1);
 		topic(t, "restart/press");
 		esp_mqtt_client_subscribe(ev->client, t, 1);

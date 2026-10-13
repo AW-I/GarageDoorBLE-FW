@@ -8,7 +8,7 @@ typedef enum {
 	DOOR_ACT_OPEN = 0,
 	DOOR_ACT_STOP = 1,
 	DOOR_ACT_CLOSE = 2,
-	DOOR_ACT_PARTIAL = 3,
+	/* 3 was partial open - removed, rejected as invalid. */
 	DOOR_ACT_LED_ON = 4,
 	DOOR_ACT_LED_OFF = 5,
 	DOOR_ACT_TOGGLE = 6, /* Wall-button behaviour: stop if moving, else open/close. */

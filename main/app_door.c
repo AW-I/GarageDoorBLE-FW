@@ -16,11 +16,29 @@ static const char *TAG = "DOOR";
 #define STATE_FLAG_WIFI_CONNECTED (1 << 1)
 #define STATE_FLAG_MQTT_CONNECTED (1 << 2)
 
-static const motor_cmd_t s_action_cmd[] = {
-	[DOOR_ACT_OPEN] = MOTOR_CMD_OPEN,       [DOOR_ACT_STOP] = MOTOR_CMD_STOP,
-	[DOOR_ACT_CLOSE] = MOTOR_CMD_CLOSE,     [DOOR_ACT_PARTIAL] = MOTOR_CMD_PARTIAL,
-	[DOOR_ACT_LED_ON] = MOTOR_CMD_LED_ON,   [DOOR_ACT_LED_OFF] = MOTOR_CMD_LED_OFF,
-};
+/* A switch, not a lookup table: unused action numbers (3, the old partial open) must be
+ * rejected, not fall through to a zero entry, which is MOTOR_CMD_OPEN. */
+static bool action_cmd(door_action_t action, motor_cmd_t *cmd) {
+	switch (action) {
+	case DOOR_ACT_OPEN:
+		*cmd = MOTOR_CMD_OPEN;
+		return true;
+	case DOOR_ACT_STOP:
+		*cmd = MOTOR_CMD_STOP;
+		return true;
+	case DOOR_ACT_CLOSE:
+		*cmd = MOTOR_CMD_CLOSE;
+		return true;
+	case DOOR_ACT_LED_ON:
+		*cmd = MOTOR_CMD_LED_ON;
+		return true;
+	case DOOR_ACT_LED_OFF:
+		*cmd = MOTOR_CMD_LED_OFF;
+		return true;
+	default:
+		return false;
+	}
+}
 
 static void update_ble(const motor_state_t *st) {
 	uint8_t flags = 0;
@@ -106,9 +124,7 @@ esp_err_t app_door_action(door_action_t action, const char *source) {
 		} else {
 			cmd = MOTOR_CMD_CLOSE;
 		}
-	} else if (action < DOOR_ACT_MAX) {
-		cmd = s_action_cmd[action];
-	} else {
+	} else if (!action_cmd(action, &cmd)) {
 		return ESP_ERR_INVALID_ARG;
 	}
 	ESP_LOGI(TAG, "%s requested %s.", source, motor_cmd_str(cmd));

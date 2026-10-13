@@ -3,7 +3,7 @@
 
 /*
  * Home Assistant integration over MQTT with auto-discovery.
- * Entities: cover (garage), light (motor LED), buttons (partial open, restart),
+ * Entities: cover (garage), light (motor LED), button (restart),
  * sensors (position %, operation, Wi-Fi RSSI). Availability via LWT.
  */
 
@@ -15,7 +15,6 @@ typedef enum {
 	HA_CMD_OPEN,
 	HA_CMD_CLOSE,
 	HA_CMD_STOP,
-	HA_CMD_PARTIAL,
 	HA_CMD_LED_ON,
 	HA_CMD_LED_OFF,
 	HA_CMD_RESTART,

@@ -84,9 +84,6 @@ static void on_ha_command(ha_cmd_t cmd) {
 	case HA_CMD_STOP:
 		app_door_action(DOOR_ACT_STOP, "HA");
 		break;
-	case HA_CMD_PARTIAL:
-		app_door_action(DOOR_ACT_PARTIAL, "HA");
-		break;
 	case HA_CMD_LED_ON:
 		app_door_action(DOOR_ACT_LED_ON, "HA");
 		break;

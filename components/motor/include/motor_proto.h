@@ -39,7 +39,6 @@ typedef enum {
 	MOTOR_CMD_OPEN = 0x00,
 	MOTOR_CMD_STOP = 0x01,
 	MOTOR_CMD_CLOSE = 0x02,
-	MOTOR_CMD_PARTIAL = 0x03,
 	MOTOR_CMD_LED_ON = 0xF0,
 	MOTOR_CMD_LED_OFF = 0xF1,
 } motor_cmd_t;
