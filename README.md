@@ -30,34 +30,50 @@ Home Assistant ──MQTT──> ha_mqtt ──────────┘      
 | Part | Notes |
 |---|---|
 | **ESP32-C3 SuperMini** | Any ESP32-C3 board works; the defaults match the SuperMini |
-| 24 V → 5 V buck converter | Powers the board from the motor's 24 V supply |
-| 5 kΩ and 10 kΩ resistors | Only for motors with 5 V logic: divider that brings the motor's TX down to 3.3 V |
 | USB-A plug or cable | Plugs into the motor's accessory socket |
+| 24 V → 5 V buck converter | Only if your motor's VBUS is 24 V |
+| 5 kΩ and 10 kΩ resistors | Only if your motor's data lines are 5 V: divider that brings the motor's TX down to 3.3 V |
 
 ### Wiring
 
-The motor's USB-A socket is **not USB**. It carries 24 V and a 5 V UART:
+The motor's USB-A socket is **not USB**. It carries power and a UART, and the voltages differ
+between motor units:
 
-| Motor USB-A pin | Signal | Connect to |
-|---|---|---|
-| VBUS | **24 V** | Buck converter in → 5 V out to the SuperMini **5V** pin |
-| D- | Motor TX (5 V or 3.3 V, see below) | **GPIO0** (ESP RX), through a 5k/10k divider if it is 5 V |
-| D+ | Motor RX | **GPIO1** (ESP TX) |
-| GND | Ground | **GND** |
+| Motor | VBUS | D- / D+ | Extra parts |
+|---|---|---|---|
+| **Steel-Line (tested)** | **5 V** | **3.3 V** | None. Wire straight to the board |
+| Other units (e.g. the ESPHome Forcedoor reference) | **24 V** | **5 V** | Buck converter on VBUS, divider on D- |
 
 > [!IMPORTANT]
-> **Measure the data lines before connecting.** Steel-Line motors come with either **5 V** or
-> **3.3 V** logic on D-/D+, and it isn't marked. With the motor powered, measure D- to GND with a
-> multimeter. The line idles high, so it reads close to its logic level.
+> **Measure before connecting anything.** The voltages aren't marked on the motor. With the motor
+> powered, use a multimeter to measure:
 >
-> - **About 5 V:** use the 5k/10k divider on D- (below). The ESP32-C3 is not 5 V tolerant, so
->   5 V straight into GPIO0 can damage it.
-> - **About 3.3 V:** connect D- straight to GPIO0 and leave the divider out. With the divider, the
->   signal drops to about 2.2 V and may not be read reliably.
+> 1. **VBUS to GND.** About 5 V can go straight to the SuperMini **5V** pin. About 24 V must go
+>    through a buck converter. 24 V on the 5V pin destroys the board.
+> 2. **D- to GND.** The line idles high, so it reads close to its logic level. About 3.3 V can go
+>    straight to GPIO0. About 5 V needs the 5k/10k divider, because the ESP32-C3 is not 5 V tolerant.
+>    Don't add the divider to a 3.3 V line: it drops the signal to about 2.2 V, which may not read
+>    reliably.
 >
 > D+ connects straight to GPIO1 either way, because the ESP drives it at 3.3 V.
 
-5 V motor:
+| Motor USB-A pin | Signal | Connect to |
+|---|---|---|
+| VBUS | Power (5 V or 24 V) | SuperMini **5V** pin, through a buck converter if 24 V |
+| D- | Motor TX | **GPIO0** (ESP RX), through a 5k/10k divider if 5 V |
+| D+ | Motor RX | **GPIO1** (ESP TX) |
+| GND | Ground | **GND** |
+
+Steel-Line (5 V VBUS, 3.3 V data):
+```
+                    ESP32-C3 SuperMini
+motor D-  ──────────── GPIO0  (RX)
+motor D+  ──────────── GPIO1  (TX)
+motor GND ──────────── GND
+motor 5V  ──────────── 5V
+```
+
+24 V VBUS, 5 V data:
 ```
                     ESP32-C3 SuperMini
 motor D- ──[5k]──┬──── GPIO0  (RX)
@@ -68,19 +84,6 @@ motor GND ───────┴──── GND
 motor D+ ───────────── GPIO1  (TX)
 motor 24V ── buck ──── 5V
 ```
-
-3.3 V motor:
-```
-                    ESP32-C3 SuperMini
-motor D- ───────────── GPIO0  (RX)
-motor D+ ───────────── GPIO1  (TX)
-motor GND ──────────── GND
-motor 24V ── buck ──── 5V
-```
-
-> [!WARNING]
-> VBUS is **24 V**. Measure it before connecting anything, and never wire it straight to the
-> board.
 
 UART is 115200 8N1. The pins can be changed in `idf.py menuconfig` → *Garage Door Controller →
 Motor UART*. GPIO0 and GPIO1 are free pins on the SuperMini. If you move them, avoid strapping pins
