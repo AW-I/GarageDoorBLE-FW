@@ -6,6 +6,9 @@
 #include "esp_err.h"
 #include "motor_proto.h"
 
+/* Called from the motor task each time a command frame goes out (including resends). */
+typedef void (*motor_tx_cb_t)(motor_cmd_t cmd);
+
 typedef struct {
 	int uart_port;
 	int tx_gpio;
@@ -14,6 +17,7 @@ typedef struct {
 	uint32_t tx_gap_ms;   /* Minimum spacing between frames sent to the motor. */
 	uint8_t tx_retries;   /* Resends when no echo arrives (0 = send once). */
 	uint32_t echo_timeout_ms;
+	motor_tx_cb_t on_tx;  /* Optional, keep it short. */
 } motor_config_t;
 
 typedef struct {

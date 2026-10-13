@@ -11,6 +11,7 @@
 #include "net_wifi.h"
 #include "ha_mqtt.h"
 #include "settings.h"
+#include "status_led.h"
 #include "version.h"
 
 static const char *TAG = "NET";
@@ -41,7 +42,23 @@ static void make_hostname(const char *name, char *out, size_t out_len) {
 	}
 }
 
+/* LED: off = no Wi-Fi configured, blinking = searching / reconnecting, solid = connected. */
+static void show_wifi_state(net_wifi_state_t state) {
+	switch (state) {
+	case NET_WIFI_CONNECTED:
+		status_led_set_mode(STATUS_LED_ON);
+		break;
+	case NET_WIFI_CONNECTING:
+		status_led_set_mode(STATUS_LED_BLINK);
+		break;
+	default:
+		status_led_set_mode(STATUS_LED_OFF);
+		break;
+	}
+}
+
 static void on_wifi_state(net_wifi_state_t state) {
+	show_wifi_state(state);
 	app_door_refresh_status();
 }
 
@@ -87,6 +104,7 @@ esp_err_t app_net_apply(void) {
 	make_hostname(name, host, sizeof(host));
 
 	esp_err_t err = net_wifi_apply(ssid, pass, host);
+	show_wifi_state(net_wifi_get_state());
 	if (err != ESP_OK) {
 		ESP_LOGE(TAG, "Wi-Fi apply failed: %s.", esp_err_to_name(err));
 	}

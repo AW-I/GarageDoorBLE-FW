@@ -16,9 +16,16 @@
 #include "app_supervisor.h"
 #include "ble_gdp.h"
 #include "settings.h"
+#include "status_led.h"
 #include "version.h"
 
 static const char *TAG = "MAIN";
+
+#if CONFIG_GDC_STATUS_LED_ACTIVE_LOW
+#define STATUS_LED_ACTIVE_LOW true
+#else
+#define STATUS_LED_ACTIVE_LOW false
+#endif
 
 static void log_init(void) {
 	esp_log_level_t level = ESP_LOG_INFO;
@@ -32,11 +39,13 @@ static void log_init(void) {
 	esp_log_level_set("BLE_GDP", level);
 	esp_log_level_set("NET_WIFI", level);
 	esp_log_level_set("HA_MQTT", level);
+	esp_log_level_set("STATUS_LED", level);
 }
 
 void app_main(void) {
 	log_init();
 	ESP_LOGI(TAG, "Garage Door Controller %s.", VERSION);
+	status_led_init(CONFIG_GDC_STATUS_LED_GPIO, STATUS_LED_ACTIVE_LOW);
 
 	const settings_defaults_t defaults = {
 		.device_name = CONFIG_GDC_DEFAULT_DEVICE_NAME,

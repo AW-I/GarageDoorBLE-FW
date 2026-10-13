@@ -133,7 +133,7 @@ static esp_err_t handle_apply(cmd_ctx_t *ctx) {
 }
 
 static esp_err_t handle_info(cmd_ctx_t *ctx) {
-	static const char *const wifi_txt[] = {"off", "connecting", "connected"};
+	static const char *const wifi_txt[] = {"Off", "Connecting", "Connected"};
 	char name[SETTINGS_NAME_MAX + 1];
 	char ssid[SETTINGS_WIFI_SSID_MAX + 1];
 	char ip[16];

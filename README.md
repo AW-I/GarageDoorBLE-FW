@@ -52,6 +52,17 @@ motor D- ---[5k]---+--- GPIO4
 Measure 24 V before connecting anything. Avoid C3 strapping pins 2/8/9 and USB pins 18/19.
 UART: 115200 8N1.
 
+### Status LED
+
+Plain LED on GPIO8 (menuconfig *Garage Door Controller → Status LED*, active-low by default):
+
+| LED | Meaning |
+|---|---|
+| Off | No Wi-Fi configured |
+| Blinking (2 Hz) | Searching for / reconnecting to Wi-Fi |
+| Solid | Connected to Wi-Fi |
+| Short flash (inverted) | A command was sent to the motor (open, close, stop, partial, light) |
+
 ### Motor protocol
 
 `[hdr][len][payload][sum][0x0D]`, where `len` is the whole frame length and `sum` is the sum of

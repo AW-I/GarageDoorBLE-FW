@@ -119,6 +119,9 @@ static void transmit(motor_cmd_t cmd) {
 	uart_write_bytes(s_cfg.uart_port, frame, len);
 	s_last_tx_us = esp_timer_get_time();
 	ESP_LOGI(TAG, "Sent %s.", motor_cmd_str(cmd));
+	if (s_cfg.on_tx) {
+		s_cfg.on_tx(cmd);
+	}
 }
 
 static void motor_task(void *arg) {

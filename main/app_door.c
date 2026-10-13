@@ -6,6 +6,7 @@
 #include "ble_gdp.h"
 #include "ha_mqtt.h"
 #include "net_wifi.h"
+#include "status_led.h"
 
 static const char *TAG = "DOOR";
 
@@ -63,6 +64,10 @@ static void update_ha(const motor_state_t *st) {
 	ha_mqtt_publish_state(&hs);
 }
 
+static void on_motor_tx(motor_cmd_t cmd) {
+	status_led_flash();
+}
+
 static void on_motor_state(const motor_state_t *st, void *ctx) {
 	update_ble(st);
 	update_ha(st);
@@ -77,6 +82,7 @@ esp_err_t app_door_init(void) {
 		.tx_gap_ms = CONFIG_GDC_MOTOR_TX_GAP_MS,
 		.tx_retries = CONFIG_GDC_MOTOR_TX_RETRIES,
 		.echo_timeout_ms = CONFIG_GDC_MOTOR_ECHO_TIMEOUT_MS,
+		.on_tx = on_motor_tx,
 	};
 	esp_err_t err = motor_init(&cfg);
 	if (err != ESP_OK) {

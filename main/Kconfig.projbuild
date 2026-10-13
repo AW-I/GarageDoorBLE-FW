@@ -38,6 +38,23 @@ menu "Garage Door Controller"
             default 500
     endmenu
 
+    menu "Status LED"
+        config GDC_STATUS_LED_GPIO
+            int "Status LED GPIO (-1 = none)"
+            range -1 21
+            default 8
+            help
+                Plain LED. Off: no Wi-Fi configured. Blinking: searching for Wi-Fi.
+                Solid: connected. A short flash marks each command sent to the motor.
+                GPIO8 is a strapping pin on the C3 - fine as an output after boot.
+
+        config GDC_STATUS_LED_ACTIVE_LOW
+            bool "LED lights when the pin is low"
+            default y
+            help
+                True for the blue LED on most ESP32-C3 SuperMini boards (GPIO8 to 3V3 via the LED).
+    endmenu
+
     menu "Defaults"
         config GDC_DEFAULT_DEVICE_NAME
             string "Default BLE device name"

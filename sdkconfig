@@ -839,6 +839,15 @@ CONFIG_GDC_MOTOR_ECHO_TIMEOUT_MS=500
 # end of Motor UART
 
 #
+# Status LED
+#
+# default:
+CONFIG_GDC_STATUS_LED_GPIO=8
+# default:
+CONFIG_GDC_STATUS_LED_ACTIVE_LOW=y
+# end of Status LED
+
+#
 # Defaults
 #
 # default:
