@@ -8,4 +8,5 @@ set(srcs        "main.c"
 idf_component_register(SRCS "${srcs}"
                        INCLUDE_DIRS "."
                        PRIV_REQUIRES settings motor ble_gdp net_wifi ha_mqtt status_led
+                                     esp_driver_gpio
                                      esp_timer esp_hw_support esp_system app_update esp_app_format)

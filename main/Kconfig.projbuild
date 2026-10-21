@@ -56,6 +56,25 @@ menu "Garage Door Controller"
                 True for the blue LED on most ESP32-C3 SuperMini boards (GPIO8 to 3V3 via the LED).
     endmenu
 
+    menu "Factory reset button"
+        config GDC_RESET_BUTTON_GPIO
+            int "Button GPIO (-1 = none)"
+            range -1 21
+            default 9
+            help
+                Active-low push button, internal pull-up enabled. GPIO9 is the BOOT button on
+                the ESP32-C3 SuperMini. Holding BOOT while powering up enters the ROM download
+                mode instead, so press it only once the controller is running.
+
+        config GDC_RESET_HOLD_S
+            int "Hold time to factory reset (s)"
+            range 2 60
+            default 10
+            help
+                Erases all settings and BLE bonds, then reboots. The status LED flashes once a
+                second while the button is held.
+    endmenu
+
     menu "Defaults"
         config GDC_DEFAULT_DEVICE_NAME
             string "Default BLE device name"
@@ -93,6 +112,13 @@ menu "Garage Door Controller"
             default 24
             help
                 Reboot only happens while no phone is connected and the door is not moving.
+
+        config GDC_WIFI_DOWN_REBOOT_MIN
+            int "Reboot after Wi-Fi has been down this long (minutes, 0 = never)"
+            default 60
+            help
+                Wi-Fi retries once a minute while down. Reboot only happens while no phone
+                is connected and the door is not moving.
 
         config GDC_OTA_CONFIRM_AFTER_S
             int "Keep a new firmware image after this much uptime (s, 0 = only on BLE login)"
