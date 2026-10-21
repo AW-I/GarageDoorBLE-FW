@@ -102,6 +102,13 @@ The SuperMini's onboard blue LED (GPIO8, active low):
 | Solid | Connected to Wi-Fi, and to the broker if one is configured |
 | Short flash (inverted) | A command was sent to the motor |
 
+### Factory reset
+
+Hold the **BOOT** button for 10 s while the controller is running. The LED flashes once a second
+while it is held; at 10 s all settings (Wi-Fi, MQTT, device name, door password) and paired phones
+are erased and the controller reboots with defaults. Do not hold BOOT while plugging in - that
+enters the ROM download mode instead. BLE command `0x08` does the same remotely.
+
 ## Build and flash
 
 Requires [ESP-IDF v6.1](https://docs.espressif.com/projects/esp-idf/en/latest/esp32c3/get-started/).
@@ -213,6 +220,7 @@ once. Settings and paired phones are kept because the `nvs` partition did not mo
 |---|---|
 | Motor UART | UART port, TX/RX GPIO (default 1/0), baud, command gap, retries, echo timeout |
 | Status LED | GPIO (default 8, -1 for none), active low |
+| Factory reset button | GPIO (default 9, the BOOT button, -1 for none), hold time (10 s) |
 | Defaults | BLE device name (`BLEDoor`), door password (`default`) |
 | Home Assistant | Discovery prefix (`homeassistant`), base topic (`garage_door`) |
 | Supervisor | Idle BLE disconnect (300 s), periodic reboot (24 h), OTA confirm time (600 s) |
@@ -224,10 +232,10 @@ once. Settings and paired phones are kept because the `nvs` partition did not mo
 | `settings` | `components/settings` | NVS-backed config (name, door password, Wi-Fi, MQTT). Constant-time password check. |
 | `motor` | `components/motor` | Forcedoor UART protocol (`motor_proto.c`, pure codec) and the UART driver task (`motor.c`). |
 | `ble_gdp` | `components/ble_gdp` | NimBLE GATT server and advertising. Transport only. |
-| `net_wifi` | `components/net_wifi` | Wi-Fi station with exponential back-off reconnect. |
+| `net_wifi` | `components/net_wifi` | Wi-Fi station, retries every minute; supervisor reboots after 1 h down. |
 | `ha_mqtt` | `components/ha_mqtt` | MQTT client, Home Assistant discovery, LWT availability, commands. |
 | `status_led` | `components/status_led` | Blink patterns for a plain LED. |
-| app | `main/` | `app_door` (actions and state fan-out), `app_ble_cmd` (BLE command protocol), `app_net` (applies settings), `app_ota` (BLE firmware update), `app_supervisor` (watchdog, idle disconnect, periodic reboot). |
+| app | `main/` | `app_door` (actions and state fan-out), `app_ble_cmd` (BLE command protocol), `app_net` (applies settings), `app_ota` (BLE firmware update), `app_supervisor` (watchdog, idle disconnect, periodic reboot, reset button). |
 
 The components don't depend on each other; only `main/` wires them together.
 

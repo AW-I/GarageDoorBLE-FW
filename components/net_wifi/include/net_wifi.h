@@ -19,11 +19,14 @@ esp_err_t net_wifi_init(net_wifi_state_cb_t cb);
 
 /**
  * @brief (Re)connect using the given credentials. Empty ssid stops Wi-Fi.
- * Reconnects automatically with exponential back-off after any drop.
+ * Retries every minute after any drop.
  */
 esp_err_t net_wifi_apply(const char *ssid, const char *pass, const char *hostname);
 
 net_wifi_state_t net_wifi_get_state(void);
+
+/** @brief Seconds spent trying to connect without success, 0 when connected or disabled. */
+uint32_t net_wifi_down_s(void);
 
 /** @brief RSSI of the current AP in dBm, 0 when not connected. */
 int8_t net_wifi_rssi(void);

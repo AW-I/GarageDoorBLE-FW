@@ -11,8 +11,9 @@
 
 static const char *TAG = "NET_WIFI";
 
-#define BACKOFF_MIN_MS 1000
-#define BACKOFF_MAX_MS 60000
+#define RETRY_MS 60000
+/* C3 Super Mini antenna distorts at full power; 8.5 dBm links far better. Units of 0.25 dBm. */
+#define WIFI_MAX_TX_POWER 34
 
 static esp_netif_t *s_netif;
 static net_wifi_state_cb_t s_cb;
@@ -21,13 +22,18 @@ static esp_timer_handle_t s_retry_timer;
 static volatile net_wifi_state_t s_state = NET_WIFI_DISABLED;
 static volatile bool s_enabled;
 static bool s_started;
-static uint32_t s_backoff_ms = BACKOFF_MIN_MS;
+static int64_t s_down_since_us; /* 0 while connected or disabled. */
 
 static void set_state(net_wifi_state_t state) {
 	if (s_state == state) {
 		return;
 	}
 	s_state = state;
+	if (state != NET_WIFI_CONNECTING) {
+		s_down_since_us = 0;
+	} else if (s_down_since_us == 0) {
+		s_down_since_us = esp_timer_get_time();
+	}
 	if (s_cb) {
 		s_cb(state);
 	}
@@ -41,6 +47,8 @@ static void retry_cb(void *arg) {
 
 static void event_handler(void *arg, esp_event_base_t base, int32_t id, void *data) {
 	if (base == WIFI_EVENT && id == WIFI_EVENT_STA_START) {
+		/* Only valid after esp_wifi_start(), and reset on each restart. */
+		esp_wifi_set_max_tx_power(WIFI_MAX_TX_POWER);
 		if (s_enabled) {
 			esp_wifi_connect();
 		}
@@ -49,16 +57,13 @@ static void event_handler(void *arg, esp_event_base_t base, int32_t id, void *da
 			return;
 		}
 		wifi_event_sta_disconnected_t *ev = data;
-		ESP_LOGW(TAG, "Disconnected (reason %d), retry in %lu ms.", ev->reason,
-				 (unsigned long)s_backoff_ms);
+		ESP_LOGW(TAG, "Disconnected (reason %d), retry in %d s.", ev->reason, RETRY_MS / 1000);
 		set_state(NET_WIFI_CONNECTING);
 		esp_timer_stop(s_retry_timer);
-		esp_timer_start_once(s_retry_timer, (uint64_t)s_backoff_ms * 1000);
-		s_backoff_ms = s_backoff_ms * 2 > BACKOFF_MAX_MS ? BACKOFF_MAX_MS : s_backoff_ms * 2;
+		esp_timer_start_once(s_retry_timer, (uint64_t)RETRY_MS * 1000);
 	} else if (base == IP_EVENT && id == IP_EVENT_STA_GOT_IP) {
 		ip_event_got_ip_t *ev = data;
 		ESP_LOGI(TAG, "Connected, IP " IPSTR ".", IP2STR(&ev->ip_info.ip));
-		s_backoff_ms = BACKOFF_MIN_MS;
 		set_state(NET_WIFI_CONNECTED);
 	}
 }
@@ -130,7 +135,6 @@ esp_err_t net_wifi_apply(const char *ssid, const char *pass, const char *hostnam
 	esp_err_t err = esp_wifi_set_config(WIFI_IF_STA, &wcfg);
 	if (err == ESP_OK) {
 		s_enabled = true;
-		s_backoff_ms = BACKOFF_MIN_MS;
 		set_state(NET_WIFI_CONNECTING);
 		err = esp_wifi_start();
 		s_started = err == ESP_OK;
@@ -148,6 +152,11 @@ esp_err_t net_wifi_apply(const char *ssid, const char *pass, const char *hostnam
 
 net_wifi_state_t net_wifi_get_state(void) {
 	return s_state;
+}
+
+uint32_t net_wifi_down_s(void) {
+	int64_t since = s_down_since_us;
+	return since ? (uint32_t)((esp_timer_get_time() - since) / 1000000) : 0;
 }
 
 int8_t net_wifi_rssi(void) {

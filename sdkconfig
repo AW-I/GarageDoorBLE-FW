@@ -863,6 +863,15 @@ CONFIG_GDC_STATUS_LED_ACTIVE_LOW=y
 # end of Status LED
 
 #
+# Factory reset button
+#
+# default:
+CONFIG_GDC_RESET_BUTTON_GPIO=9
+# default:
+CONFIG_GDC_RESET_HOLD_S=10
+# end of Factory reset button
+
+#
 # Defaults
 #
 # default:
@@ -887,6 +896,8 @@ CONFIG_GDC_HA_BASE_TOPIC="garage_door"
 CONFIG_GDC_BLE_IDLE_TIMEOUT_S=300
 # default:
 CONFIG_GDC_PERIODIC_REBOOT_H=24
+# default:
+CONFIG_GDC_WIFI_DOWN_REBOOT_MIN=60
 # default:
 CONFIG_GDC_OTA_CONFIRM_AFTER_S=600
 # end of Supervisor

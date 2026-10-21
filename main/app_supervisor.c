@@ -1,5 +1,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "driver/gpio.h"
 #include "esp_task_wdt.h"
 #include "esp_system.h"
 #include "esp_timer.h"
@@ -12,6 +13,8 @@
 #include "ha_mqtt.h"
 #include "motor.h"
 #include "net_wifi.h"
+#include "settings.h"
+#include "status_led.h"
 
 static const char *TAG = "SUPERVISOR";
 
@@ -31,6 +34,33 @@ static void restart_now(void) {
 	esp_restart();
 }
 
+static void reset_button_init(void) {
+#if CONFIG_GDC_RESET_BUTTON_GPIO >= 0
+	const gpio_config_t io = {
+		.pin_bit_mask = 1ULL << CONFIG_GDC_RESET_BUTTON_GPIO,
+		.mode = GPIO_MODE_INPUT,
+		.pull_up_en = GPIO_PULLUP_ENABLE,
+	};
+	if (gpio_config(&io) != ESP_OK) {
+		ESP_LOGE(TAG, "Reset button GPIO%d config failed.", CONFIG_GDC_RESET_BUTTON_GPIO);
+	}
+#endif
+}
+
+/* Called once per poll; true once the button has been held for the full hold time. */
+static bool reset_button_held(void) {
+	static uint32_t held_s;
+	if (CONFIG_GDC_RESET_BUTTON_GPIO < 0 || gpio_get_level(CONFIG_GDC_RESET_BUTTON_GPIO) != 0) {
+		held_s = 0;
+		return false;
+	}
+	if (held_s == 0) {
+		ESP_LOGW(TAG, "Reset button pressed, hold %d s to factory reset.", CONFIG_GDC_RESET_HOLD_S);
+	}
+	status_led_flash();
+	return ++held_s >= CONFIG_GDC_RESET_HOLD_S;
+}
+
 static void supervisor_task(void *arg) {
 	if (esp_task_wdt_add(NULL) != ESP_OK) {
 		ESP_LOGE(TAG, "Failed to add watchdog to task.");
@@ -42,6 +72,13 @@ static void supervisor_task(void *arg) {
 		esp_task_wdt_reset();
 
 		if (s_restart_requested) {
+			restart_now();
+		}
+
+		if (reset_button_held()) {
+			ESP_LOGW(TAG, "Reset button held, factory reset.");
+			settings_factory_reset();
+			ble_gdp_clear_bonds();
 			restart_now();
 		}
 
@@ -63,6 +100,14 @@ static void supervisor_task(void *arg) {
 			restart_now();
 		}
 
+		/* Wi-Fi stuck down: a fresh boot clears radio/driver state; BLE stays usable meanwhile. */
+		if (CONFIG_GDC_WIFI_DOWN_REBOOT_MIN > 0 &&
+			net_wifi_down_s() > CONFIG_GDC_WIFI_DOWN_REBOOT_MIN * 60U && !ble_gdp_is_connected() &&
+			!motor_is_moving()) {
+			ESP_LOGW(TAG, "Wi-Fi down for %lu s, rebooting.", (unsigned long)net_wifi_down_s());
+			restart_now();
+		}
+
 		if (++ticks % RSSI_PERIOD_S == 0) {
 			ha_mqtt_publish_rssi(net_wifi_rssi());
 		}
@@ -72,6 +117,7 @@ static void supervisor_task(void *arg) {
 }
 
 esp_err_t app_supervisor_init(void) {
+	reset_button_init();
 	if (xTaskCreate(supervisor_task, TASK_NAME, TASK_STACK, NULL, 4, NULL) != pdPASS) {
 		return ESP_ERR_NO_MEM;
 	}
