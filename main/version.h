@@ -7,7 +7,10 @@
  *           Wi-Fi retries every minute instead of exponential back-off; reboots after
  *           1 h without Wi-Fi (when no phone connected and door idle).
  *           Factory reset by holding the BOOT button (GPIO9) for 10 s.
+ *  V1.0.2 - Boot status probe: if the motor has not reported within 5 s of boot (e.g. after a
+ *           power cut), toggle the motor light to make it send its state, so Home Assistant
+ *           gets the door state without waiting for a command.
  */
-#define VERSION "1.0.1"
+#define VERSION "1.0.2"
 
 #endif

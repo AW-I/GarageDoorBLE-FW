@@ -36,6 +36,16 @@ menu "Garage Door Controller"
         config GDC_MOTOR_ECHO_TIMEOUT_MS
             int "Echo timeout (ms)"
             default 500
+
+        config GDC_MOTOR_PROBE_DELAY_S
+            int "Request status after boot if none arrives within (s, 0 = never)"
+            range 0 60
+            default 5
+            help
+                The motor only reports when something changes and has no status request, so after
+                a power cut the door state stays unknown. If no status arrives within this time,
+                the motor light is switched on and back off to make it report (up to 3 tries,
+                this far apart).
     endmenu
 
     menu "Status LED"

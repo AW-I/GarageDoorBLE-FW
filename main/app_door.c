@@ -1,3 +1,5 @@
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "esp_log.h"
 #include "sdkconfig.h"
 
@@ -15,6 +17,12 @@ static const char *TAG = "DOOR";
 #define STATE_FLAG_WIFI_CONFIGURED (1 << 0)
 #define STATE_FLAG_WIFI_CONNECTED (1 << 1)
 #define STATE_FLAG_MQTT_CONNECTED (1 << 2)
+
+/* Boot status probe, see probe_task(). */
+#define PROBE_ATTEMPTS 3
+#define PROBE_REPLY_MS 2000
+#define PROBE_POLL_MS 100
+#define PROBE_TASK_STACK 2560
 
 /* A switch, not a lookup table: unused action numbers (3, the old partial open) must be
  * rejected, not fall through to a zero entry, which is MOTOR_CMD_OPEN. */
@@ -91,6 +99,48 @@ static void on_motor_state(const motor_state_t *st, void *ctx) {
 	update_ha(st);
 }
 
+static bool have_status(void) {
+	motor_state_t st;
+	motor_get_state(&st);
+	return st.valid;
+}
+
+/* Wait up to timeout_ms for the first status frame. */
+static bool wait_status(uint32_t timeout_ms) {
+	for (uint32_t waited = 0; waited < timeout_ms; waited += PROBE_POLL_MS) {
+		if (have_status()) {
+			return true;
+		}
+		vTaskDelay(pdMS_TO_TICKS(PROBE_POLL_MS));
+	}
+	return have_status();
+}
+
+/* The motor only sends a status frame when something changes, and the protocol has no status
+ * request. After a reboot (e.g. a power cut) nothing arrives, so Home Assistant and the app get no
+ * door state. Switching the motor light on makes the motor report; it is then switched back off,
+ * its normal idle state. Skipped as soon as any real status arrives. */
+static void probe_task(void *arg) {
+	for (int attempt = 1; attempt <= PROBE_ATTEMPTS; attempt++) {
+		/* Also gives a motor that lost power with us time to start up. */
+		if (wait_status(CONFIG_GDC_MOTOR_PROBE_DELAY_S * 1000U)) {
+			break;
+		}
+		ESP_LOGI(TAG, "No motor status yet, toggling the light to request one (%d/%d).", attempt,
+				 PROBE_ATTEMPTS);
+		motor_send(MOTOR_CMD_LED_ON);
+		wait_status(PROBE_REPLY_MS);
+		motor_send(MOTOR_CMD_LED_OFF);
+		if (wait_status(PROBE_REPLY_MS)) {
+			break;
+		}
+	}
+	if (!have_status()) {
+		ESP_LOGW(TAG, "Motor never reported a status - check the wiring and voltages.");
+	}
+	vTaskDelete(NULL);
+}
+
 esp_err_t app_door_init(void) {
 	const motor_config_t cfg = {
 		.uart_port = CONFIG_GDC_MOTOR_UART_PORT,
@@ -108,6 +158,10 @@ esp_err_t app_door_init(void) {
 	}
 	err = motor_add_listener(on_motor_state, NULL);
 	app_door_refresh_status();
+	if (CONFIG_GDC_MOTOR_PROBE_DELAY_S > 0 &&
+		xTaskCreate(probe_task, "DoorProbe", PROBE_TASK_STACK, NULL, 3, NULL) != pdPASS) {
+		ESP_LOGE(TAG, "Status probe task failed to start.");
+	}
 	return err;
 }
 

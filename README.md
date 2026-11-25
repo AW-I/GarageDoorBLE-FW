@@ -221,7 +221,7 @@ once. Settings and paired phones are kept because the `nvs` partition did not mo
 
 | Menu | Options |
 |---|---|
-| Motor UART | UART port, TX/RX GPIO (default 1/0), baud, command gap, retries, echo timeout |
+| Motor UART | UART port, TX/RX GPIO (default 1/0), baud, command gap, retries, echo timeout, boot status probe (5 s) |
 | Status LED | GPIO (default 8, -1 for none), active low |
 | Factory reset button | GPIO (default 9, the BOOT button, -1 for none), hold time (10 s) |
 | Defaults | BLE device name (`BLEDoor`), door password (`default`) |
@@ -259,6 +259,10 @@ sum of all preceding bytes & 0xFF.
 Status frames are 17 bytes: `40 11 49 <op> <led> … <pos%> … <sum> 0D`. `op` is 0 opening,
 1 stopped, 2 closing. `led` is F0 on, F1 off. The motor echoes each accepted command as a
 `40 07 41 <cmd> …` frame.
+
+The motor only sends a status frame when something changes, and there is no status request. So if
+no status has arrived 5 s after boot (for example after a power cut), the controller switches the
+motor light on and back off to make it report. It tries up to 3 times.
 
 ### BLE (phone app)
 
